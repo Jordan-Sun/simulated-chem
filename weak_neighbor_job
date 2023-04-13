@@ -1,0 +1,7 @@
+#BSUB -n 1
+#BSUB -W 120
+#BSUB -q cpu-compute
+#BSUB -R '(!gpu)'
+#BSUB -N
+#BSUB -J "WeakNeighbor[1-63]%20"
+./weak_neighbor.sh  $LSB_JOBINDEX

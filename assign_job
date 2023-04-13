@@ -1,0 +1,7 @@
+#BSUB -n 1
+#BSUB -W 120
+#BSUB -q cpu-compute
+#BSUB -R '(!gpu)'
+#BSUB -N
+#BSUB -J "GreedyAssignment[1-320]%32"
+./complex.sh  $LSB_JOBINDEX

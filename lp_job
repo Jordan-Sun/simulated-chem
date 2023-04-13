@@ -1,0 +1,7 @@
+#BSUB -n 1
+#BSUB -W 60
+#BSUB -q cpu-compute
+#BSUB -R '(!gpu)'
+#BSUB -N
+#BSUB -J "LPSimulation[2-320]%32"
+./lp.sh  $LSB_JOBINDEX
