@@ -13,7 +13,7 @@ from complex_assignment import itowh
 # compute_cost_matrix (t x 1)
 # communicate_cost_matrix (t x 1)
 
-def lp_communicate_compute(width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
+def lp_communicate_compute(communication_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
 
     def objective(assignment_matrix):
         compute_time = workload_matrix @ assignment_matrix
@@ -28,14 +28,13 @@ def lp_communicate_compute(width: int, height: int, workload_matrix: list, sampl
             #   for neighbor in neighbor_array:
             #     if neighbor not in task_array:
             #       communicate_time[p] += a+b (communicate)
-
             # get the indices of the tasks of processor p
             tasks_array = np.nonzero(assignment_matrix[:, p])[0]
             for task in tasks_array:
                 neighbor_list = get_neighbor(task, width, height)
                 for neighbor_index in neighbor_list:
                     if neighbor_index not in tasks_array:
-                        communicate_time += 1
+                        communicate_time += communication_cost
 
         communicate_cost = np.max(communicate_time)
         return np.sum(compute_cost) + communicate_cost * intervals
@@ -43,9 +42,7 @@ def lp_communicate_compute(width: int, height: int, workload_matrix: list, sampl
     def equality_constraint():
         row_sums = np.sum(x, axis=1)
         return row_sums - 1
-
-    # assignment_matrix = np.zeros((samples, processors))
-    # intialize the assignment 
+    
     assignment_matrix = np.eye(processors)[np.random.choice(processors, samples)]
 
     constraints = ({'type': 'eq', 'fun': equality_constraint})
