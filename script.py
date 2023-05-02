@@ -506,6 +506,8 @@ def main():
         return qlp(function_name, workdir, x, y, t, p, extra)
     elif task_name == 'simulate':
         return simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
+    elif task_name == 'alt_simulate':
+        return alt_simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
     else:
         print('Invalid task name')
         return -3
