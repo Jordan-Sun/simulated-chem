@@ -389,6 +389,73 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
             file.write('ComputationUnicast, {}\n'.format(computationUnicast))
     return 0
 
+
+# executes the alternative simulation function and write the results to a file
+def alt_simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int):
+    # the directory to write the results to
+    outdir = os.path.join(workdir, 'p_{}'.format(p))
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
+    # the name of the file to read the workload from
+    input_name = os.path.join(workdir, 'workload.csv')
+    if not os.path.exists(input_name):
+        print('Workload file does not exist')
+        return -4
+    # read the workload from the file
+    workload = pd.read_csv(input_name, header='infer', index_col=0).values.tolist()
+    samples = width * height
+    if len(workload) != samples:
+        print('Workload file has invalid number of samples')
+        return -5
+
+    # the name of the assignment file and output file
+    if extra >= 0:
+        assignment_name = os.path.join(outdir, '{}_{}.assignment'.format(function, extra))
+        output_name = os.path.join(outdir, '{}_{}.altres'.format(function, extra))
+    else:
+        assignment_name = os.path.join(outdir, '{}.assignment'.format(function))
+        output_name = os.path.join(outdir, '{}.altres'.format(function))
+    
+    communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast']
+    if function in communication_aware_functions:
+        if sendCost != 1:
+            assignment_name = assignment_name.replace('.assignment', '_send{}.assignment'.format(sendCost))
+        if recvCost != 1:
+            assignment_name = assignment_name.replace('.assignment', '_recv{}.assignment'.format(recvCost))
+    
+    if sendCost != 1:
+        output_name = output_name.replace('.altres', '_send{}.altres'.format(sendCost))
+    if recvCost != 1:
+        output_name = output_name.replace('.altres', '_recv{}.altres'.format(recvCost))
+    
+    if not os.path.exists(assignment_name):
+        print('Assignment file does not exist')
+        return -6
+    # if the file already exists, do not run the simulation function
+    if os.path.exists(output_name):
+        print('Skipping simulation function at {}'.format(output_name))
+        return 1
+    else:
+        print('Running simulation function at {}'.format(output_name))
+    # read the assignments from the file
+    assignments_matrix = pd.read_csv(assignment_name, header=None).values.tolist()
+    # convert the matrix to a list
+    assignments = [cell for row in assignments_matrix for cell in row]
+    if len(assignments) != samples:
+        print('Assignment file has invalid number of samples')
+        return -7
+    # simulate the workload
+    try:
+        computation, unicast = simulation.alt_simulate(workload, assignments, width, height, t, p, sendCost, recvCost)
+    except ValueError as e:
+        print(e)
+        return -7
+    # write the results to a file
+    with open(output_name, 'w') as file:
+        file.write('Computation, {}\n'.format(computation))
+        file.write('Unicast, {}\n'.format(unicast))
+    return 0
+
 # the assignment function
 # the first argument is the name of the task to run
 # the second argument is the name of the function to run

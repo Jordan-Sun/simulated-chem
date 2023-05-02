@@ -93,3 +93,52 @@ def simulate(matrix: list, assignment: list, width: int, height: int, intervals:
         totalComputationBroadcast += max(intervalComputationBroadcasts)
         totalComputationUnicast += max(intervalComputationUnicasts)
     return totalComputation, totalBroadcast, totalUnicast, totalComputationBroadcast, totalComputationUnicast
+
+
+# Simulate the computation and communication cost of an assignment on a matrix with alternative communcation calculation
+def alt_simulate(matrix: list, assignment: list, width: int, height: int, intervals: int, processors: int, sendCost: int, recvCost: int) -> Tuple[int, int]:
+    # Validate the input
+    samples = width * height
+    if samples != len(matrix):
+        raise ValueError('Invalid number of samples, expected ' + str(len(matrix)) + ', got ' + str(samples) + '.')
+    if intervals != len(matrix[0]):
+        raise ValueError('Invalid number of intervals, expected ' + str(len(matrix[0])) + ', got ' + str(intervals) + '.')
+
+    # Compute the total costs
+    totalComputation = 0
+    totalUnicast = 0
+
+    # Constant variables (update these to be inputs later)
+    numNeighbors = 4
+    factor = 0.1
+
+    # Process each interval
+    for interval in range(intervals):
+        # Find the processor with the maximum work.
+        intervalComputations = [0] * processors
+        intervalUnicasts = [0] * processors
+        # Process each sample
+        for x in range(width):
+            for y in range(height):
+                sample = whtoi(x, y, width, height)
+                # Find the number of neighbors with a different assignment
+                different = 0
+                # Check top
+                if assignment[sample] != assignment[whtoi(x, y - 1, width, height)]:
+                    different += 1
+                # Check bottom
+                if assignment[sample] != assignment[whtoi(x, y + 1, width, height)]:
+                    different += 1
+                # Check left
+                if assignment[sample] != assignment[whtoi(x - 1, y, width, height)]:
+                    different += 1
+                # Check right
+                if assignment[sample] != assignment[whtoi(x + 1, y, width, height)]:
+                    different += 1
+                # Add the work to the total for the processor
+                intervalComputations[assignment[sample]] += matrix[sample][interval]
+                intervalUnicasts[assignment[sample]] += (sendCost + recvCost) * (different + factor * (numNeighbors - different))
+        # Add the maximum work to the total.
+        totalComputation += max(intervalComputations)
+        totalUnicast += max(intervalUnicasts)
+    return totalComputation, totalUnicast
