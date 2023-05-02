@@ -27,6 +27,15 @@ def itowh(i: int, width: int, height: int) -> Tuple[int, int]:
         raise ValueError('i out of bounds')
     return i % width, int(i / width)
 
+def get_neighbor(sample: int, width: int, height: int) -> list[int]:
+    x, y = itowh(sample, width, height)
+    left = whtoi(x - 1, y, width, height)
+    right = whtoi(x + 1, y, width, height)
+    up = whtoi(x, y - 1, width, height)
+    down = whtoi(x, y + 1, width, height)
+    return [left, right, up, down] 
+
+
 # Computation Only
 def greedy(matrix: list, width: int, height: int, intervals: int, processors: int, extra: int) -> List[int]:
     # the total number of samples is width times height
