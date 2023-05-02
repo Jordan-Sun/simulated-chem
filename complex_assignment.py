@@ -27,7 +27,7 @@ def itowh(i: int, width: int, height: int) -> Tuple[int, int]:
         raise ValueError('i out of bounds')
     return i % width, int(i / width)
 
-def get_neighbor(sample: int, width: int, height: int) -> list[int]:
+def get_neighbor(sample: int, width: int, height: int) -> List[int]:
     x, y = itowh(sample, width, height)
     left = whtoi(x - 1, y, width, height)
     right = whtoi(x + 1, y, width, height)
