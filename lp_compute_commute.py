@@ -13,7 +13,7 @@ from complex_assignment import itowh
 # compute_cost_matrix (t x 1)
 # communicate_cost_matrix (t x 1)
 
-def lp_communicate_compute(communication_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
+def lp_communicate_compute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
 
     def objective(assignment_matrix):
         compute_time = workload_matrix @ assignment_matrix
