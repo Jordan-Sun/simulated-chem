@@ -3,6 +3,7 @@ import re
     
 split_re = re.compile('([a-z]+)\_([\d]+)')
 result_re = re.compile('([^.]+).result')
+altres_re = re.compile('([^.]+).altres')
 
 # process all outputs
 base_directory = 'output'
@@ -15,12 +16,17 @@ if not os.path.exists(base_directory):
 param_header = ['x', 'y', 't', 'r', 'trial', 'p']
 name_header = []
 results = {}
+is_altres = False
 
 # walk the base directory
 for path, _, files in os.walk(base_directory):
     for file in files:
         # only find '*.result' files
         result_match = result_re.fullmatch(file)
+        is_altres = False
+        if result_match is None:
+            result_match = altres_re.fullmatch(file)
+            is_altres = True
         if result_match is None:
             continue
         print('Processing ' + path + os.sep + file)
@@ -51,6 +57,8 @@ for path, _, files in os.walk(base_directory):
                 type = line_parts[0]
                 value = line_parts[1]
                 name = assignment + '_' + type
+                if is_altres:
+                    name = 'alt_' + name
                 # add the result
                 if results.get(param) is None:
                     results[param] = {}
