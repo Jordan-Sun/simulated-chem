@@ -34,7 +34,7 @@ def lp_communicate_compute(send_cost: int, receive_cost: int, width: int, height
                 neighbor_list = get_neighbor(task, width, height)
                 for neighbor_index in neighbor_list:
                     if neighbor_index not in tasks_array:
-                        communicate_time += communication_cost
+                        communicate_time += send_cost + receive_cost
 
         communicate_cost = np.max(communicate_time)
         return np.sum(compute_cost) + communicate_cost * intervals
