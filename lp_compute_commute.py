@@ -3,6 +3,7 @@ import numpy as np
 from complex_assignment import get_neighbor
 from complex_assignment import whtoi
 from complex_assignment import itowh
+from typing import List, Tuple
 # This lp solver will consider both the communication and computation time and try to minimize the total time
 # variables:
 # samples: s
