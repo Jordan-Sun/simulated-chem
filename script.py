@@ -6,7 +6,7 @@ import simple_assignment
 import complex_assignment
 import lp_assignment
 import qlp_assignment
-import lp_communicate_compute
+import lp_compute_commute
 import simulation
 import sys
 import os
