@@ -3,6 +3,7 @@ import numpy as np
 from complex_assignment import get_neighbor
 from complex_assignment import whtoi
 from complex_assignment import itowh
+from typing import List, Tuple
 # This lp solver will consider both the communication and computation time and try to minimize the total time
 # variables:
 # samples: s
@@ -13,7 +14,7 @@ from complex_assignment import itowh
 # compute_cost_matrix (t x 1)
 # communicate_cost_matrix (t x 1)
 
-def lp_communicate_compute(communication_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
+def lp_communicate_compute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
 
     def objective(assignment_matrix):
         compute_time = workload_matrix @ assignment_matrix
@@ -34,7 +35,7 @@ def lp_communicate_compute(communication_cost: int, width: int, height: int, wor
                 neighbor_list = get_neighbor(task, width, height)
                 for neighbor_index in neighbor_list:
                     if neighbor_index not in tasks_array:
-                        communicate_time += communication_cost
+                        communicate_time += send_cost + receive_cost
 
         communicate_cost = np.max(communicate_time)
         return np.sum(compute_cost) + communicate_cost * intervals

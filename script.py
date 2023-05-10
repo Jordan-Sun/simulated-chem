@@ -6,6 +6,7 @@ import simple_assignment
 import complex_assignment
 import lp_assignment
 import qlp_assignment
+import lp_compute_commute
 import simulation
 import sys
 import os
@@ -300,6 +301,75 @@ def qlp(function: str, workdir: str, width: int, height: int, t: int, p: int, ex
                 file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
     return 0
 
+def qlp_compute_commute(function: str, workdir: str, send_cost: int, received_cost: int, width: int, height: int, t: int, p: int, extra: int = -1):
+    # the directory to write the results to
+    outdir = os.path.join(workdir, 'p_{}'.format(p))
+    solution_file = 'qlp_compute_commute.solution'
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
+    if function == 'solve':
+        # the name of the file to write the assignments to
+        file_name = os.path.join(outdir, solution_file)
+        # if the file already exists, do not run the lp function
+        if os.path.exists(file_name):
+            print('Skipping qlp_compute_commute function at {}'.format(file_name))
+            return 1
+        else:
+            print('Running qlp_compute_commute function at {}'.format(file_name))
+        # the name of the file to read the workload from
+        input_name = os.path.join(workdir, 'workload.csv')
+        if not os.path.exists(input_name):
+            print('Workload file does not exist')
+            return -4
+        # read the workload from the file
+        workload = pd.read_csv(input_name, header='infer', index_col=0).values.tolist()
+        samples = width * height
+        if len(workload) != samples:
+            print('Workload file has invalid number of samples')
+            return -5
+        solution = lp_communicate_compute.qlp_(send_cost, receive_cost, width, height, workload, samples, t, p)
+        # write the assignments to a file
+        df = pd.DataFrame(solution)
+        df.to_csv(file_name, header=False, index=False)
+        return 0
+    else:
+        # the name of the file to read the solution from
+        input_name = os.path.join(outdir, solution_file)
+        if not os.path.exists(input_name):
+            print('Solution file does not exist')
+            return -4
+        # read the solution from the file
+        solution = pd.read_csv(input_name, header=None).values.tolist()
+        samples = width * height
+        if len(solution) != samples:
+            print('Solution file has invalid number of samples')
+            return -5
+        # the name of the file to write the assignments to
+        if extra >= 0:
+            file_name = os.path.join(outdir, 'qlp_{}_{}.assignment'.format(function, extra))
+        else:
+            file_name = os.path.join(outdir, 'qlp_{}.assignment'.format(function))
+        # if the file already exists, do not run the post processing function
+        if os.path.exists(file_name):
+            print('Skipping post processing function at {}'.format(file_name))
+            return 1
+        else:
+            print('Running post processing function at {}'.format(file_name))
+        # the assignment function
+        assignments = None
+        if function == 'max':
+            assignments = qlp_assignment.qlp_max(solution, samples, p)
+        elif function == 'random':
+            assignments = qlp_assignment.qlp_random(solution, samples, p)
+        else:
+            print('Invalid assignment function')
+            return -6
+        # write the assignments to a file
+        with open(file_name, 'w') as file:
+            for y in range(height):
+                file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
+    return 0
+
 # executes a simulation function and write the results to a file
 def simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int):
     # the directory to write the results to
@@ -508,6 +578,8 @@ def main():
         return simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
     elif task_name == 'alt_simulate':
         return alt_simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
+    elif task_name == 'lp_commpute_commute':
+        return qlp_compute_commute(function_name, workdir, sendCost, recvCost, x, y, t, p)
     else:
         print('Invalid task name')
         return -3
