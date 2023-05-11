@@ -1,5 +1,5 @@
-from scipy.optimize import minimize
 import numpy as np
+from scipy.optimize import minimize
 from complex_assignment import get_neighbor
 from complex_assignment import whtoi
 from complex_assignment import itowh
@@ -14,7 +14,7 @@ from typing import List, Tuple
 # compute_cost_matrix (t x 1)
 # communicate_cost_matrix (t x 1)
 
-def lp_communicate_compute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
+def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
 
     def objective(assignment_matrix):
         compute_time = workload_matrix @ assignment_matrix
@@ -40,7 +40,7 @@ def lp_communicate_compute(send_cost: int, receive_cost: int, width: int, height
         communicate_cost = np.max(communicate_time)
         return np.sum(compute_cost) + communicate_cost * intervals
 
-    def equality_constraint():
+    def equality_constraint(x):
         row_sums = np.sum(x, axis=1)
         return row_sums - 1
     
