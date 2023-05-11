@@ -181,6 +181,8 @@ def lp(function: str, workdir: str, width: int, height: int, t: int, p: int, ext
         # the name of the file to read the solution from
         input_name = os.path.join(outdir, 'lp.solution')
         if not os.path.exists(input_name):
+            # debug
+            print("hi")
             print('Solution file does not exist')
             return -4
         # read the solution from the file
@@ -197,6 +199,8 @@ def lp(function: str, workdir: str, width: int, height: int, t: int, p: int, ext
         # the name of the file to read the solution from
         input_name = os.path.join(outdir, 'lp.solution')
         if not os.path.exists(input_name):
+            #debug
+            print("hi")
             print('Solution file does not exist')
             return -4
         # read the solution from the file
@@ -301,8 +305,10 @@ def qlp(function: str, workdir: str, width: int, height: int, t: int, p: int, ex
                 file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
     return 0
 
-def qlp_compute_commute(function: str, workdir: str, send_cost: int, received_cost: int, width: int, height: int, t: int, p: int, extra: int = -1):
+def qlp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
     # the directory to write the results to
+    print("workdir ",workdir)
+    print("p ",p)
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     solution_file = 'qlp_compute_commute.solution'
     if not os.path.exists(outdir):
@@ -327,7 +333,7 @@ def qlp_compute_commute(function: str, workdir: str, send_cost: int, received_co
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        solution = lp_communicate_compute.qlp_(send_cost, receive_cost, width, height, workload, samples, t, p)
+        solution = lp_compute_commute.lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
         # write the assignments to a file
         df = pd.DataFrame(solution)
         df.to_csv(file_name, header=False, index=False)
@@ -538,7 +544,9 @@ def main():
         print('Usage: python3 script.py <task> <function> <index> [extra] [sendCost] [recvCost]')
         return -1
     task_name = sys.argv[1]
+    print("task_name:", task_name)
     function_name = sys.argv[2]
+    print("function name", function_name)
     index = int(sys.argv[3])
     if len(sys.argv) > 4:
         extra = int(sys.argv[4])
@@ -564,7 +572,6 @@ def main():
     if not os.path.exists(workdir):
         print('Working directory does not exist')
         return -2
-    
     # execute the subtask
     if task_name == 'simple':
         return simple(function_name, workdir, x, y, p, extra)
@@ -578,7 +585,7 @@ def main():
         return simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
     elif task_name == 'alt_simulate':
         return alt_simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
-    elif task_name == 'lp_commpute_commute':
+    elif task_name == 'lp_compute_commute':
         return qlp_compute_commute(function_name, workdir, sendCost, recvCost, x, y, t, p)
     else:
         print('Invalid task name')
