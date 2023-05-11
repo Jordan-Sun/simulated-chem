@@ -19,7 +19,6 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
     def objective(assignment_matrix):
         compute_time = workload_matrix @ assignment_matrix
         compute_cost = np.max(compute_time, axis=1).reshape(compute_cost, (-1, 1))
-
         communicate_time = np.empty(processors)
         for p in range(processors):
             # PSEUDO-CODE

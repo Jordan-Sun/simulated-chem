@@ -181,8 +181,6 @@ def lp(function: str, workdir: str, width: int, height: int, t: int, p: int, ext
         # the name of the file to read the solution from
         input_name = os.path.join(outdir, 'lp.solution')
         if not os.path.exists(input_name):
-            # debug
-            print("hi")
             print('Solution file does not exist')
             return -4
         # read the solution from the file
@@ -199,8 +197,6 @@ def lp(function: str, workdir: str, width: int, height: int, t: int, p: int, ext
         # the name of the file to read the solution from
         input_name = os.path.join(outdir, 'lp.solution')
         if not os.path.exists(input_name):
-            #debug
-            print("hi")
             print('Solution file does not exist')
             return -4
         # read the solution from the file
