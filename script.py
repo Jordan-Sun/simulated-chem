@@ -20,7 +20,7 @@ rs = [2, 5, 10, 20]
 num_trials = 20
 
 # converts the job index to the parameters
-# the parameters are x, y, t, r, p, trial
+# the parameters are xlp_co, y, t, r, p, trial
 def index_to_params(index: int) -> Tuple[int, int, int, int, int, int]:
     num = index - 1
     num, trial = divmod(num, num_trials)
