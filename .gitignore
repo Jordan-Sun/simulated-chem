@@ -1,4 +1,5 @@
 output/
 __pycache__/
+.vscode/
 *.swp
 processed.csv

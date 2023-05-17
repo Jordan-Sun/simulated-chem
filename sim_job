@@ -3,5 +3,5 @@
 #BSUB -q cpu-compute
 #BSUB -R '(!gpu)'
 #BSUB -N
-#BSUB -J "Simulation[2-320]%32"
+#BSUB -J "Simulation[2-20]%32"
 ./simulate.sh  $LSB_JOBINDEX
