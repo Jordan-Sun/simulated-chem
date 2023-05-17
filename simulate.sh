@@ -3,9 +3,9 @@ if [[ -z $1 ]];
 then 
     echo "usage: $0 <group>"
 else
-    for group in {0..11}
+    for group in {0..3}
     do
-        let index=$(($group*320 + $1))
+        let index=$(($group*960 + $1))
         echo "Simulating $index."
         # python3 script.py simulate bound $index
         python3 script.py simulate proximity_matrix $index -1 2 3
