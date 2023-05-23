@@ -10,68 +10,93 @@ from typing import List, Tuple
 # intervals: t
 # processors: p
 # assignment_matrix (s x p)
-# workload_matrix (t x s=)
+# workload_matrix (t x s)
 # compute_cost_matrix (t x 1)
 # communicate_cost_matrix (t x 1)
 
 def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
-    workload_matrix = np.array(workload_matrix)
-    assignment_matrix = np.eye(processors)[np.random.choice(processors, samples)]
-    assignment_matrix = assignment_matrix.reshape((-1, processors))
 
-    print("workload_matrix shape: ", workload_matrix.shape)
-    print("assignment_matrix shape:", assignment_matrix.shape)
-    print("number of processor: ", processors)
-    print("number of intervals: ", intervals)
-    print("samples: ",samples)
+    # samples = 200
+    # intervals = 20
+    # processors = 16
+    # workload_matrix = np.random.uniform(0,100,(samples, intervals))
 
-    def compute_cost(matrix):
-        reshaped_workload_matrix = np.reshape(workload_matrix, (samples, intervals))
-        reshaped_matrix = np.reshape(matrix, (-1, processors))
-        compute_time = reshaped_matrix.T @ reshaped_workload_matrix
-        compute_cost = np.max(compute_time, axis=1).reshape(-1, 1)
+    def objective(assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors):
+        # print("workload_matrix shape: ", np.array(workload_matrix).shape)
+        assignment_matrix = assignment_matrix.reshape(-1,processors)
+        # print("assignment_matrix shape: ", assignment_matrix.shape)
+        compute_time_matrix = np.array(workload_matrix).T @ assignment_matrix
+        compute_cost = np.sum(np.max(compute_time_matrix, axis=1).reshape(-1, 1))
+        print(compute_cost)
+        return compute_cost
 
-    # def communicate_cost(matrix):
+    matrix = np.zeros((samples,processors))
+    for i in range(samples):
+        matrix[i][np.random.randint(0, processors)] =  1
+    print("matrix dimension: ",matrix.shape)
+    print(matrix)
 
-    def objective(matrix):
-        reshaped_workload_matrix = np.reshape(workload_matrix, (samples, intervals))
-        reshaped_matrix = np.reshape(matrix, (-1, processors))
-        print("reshaped_workload_matrix shape: ",reshaped_workload_matrix.shape)
-        print("reshaped_matrix shape: ",reshaped_matrix.shape)
-        compute_time = reshaped_matrix.T @ reshaped_workload_matrix
-        compute_cost = np.max(compute_time, axis=1).reshape(-1, 1)
-        # communicate_time = np.zeros(processors)
-        # for p in range(processors):
-        #     # PSEUDO-CODE
-        #     # task_array = get_task(p)
-        #     # for task in task_array:
-        #     #   neighbor_array = get_neighbor(task)
-        #     #   for neighbor in neighbor_array:
-        #     #     if neighbor not in task_array:
-        #     #       communicate_time[p] += a+b (communicate)
-        #     # get the indices of the tasks of processor p
+    # set constraint
+    def linear_constraint(assignment_matrix):
+        assignment_matrix = assignment_matrix.reshape(-1, processors)  # Reshape the input matrix
+        row_sums = np.sum(assignment_matrix, axis=1)
+        return row_sums - 1
 
-        #     tasks_array = np.nonzero(reshaped_matrix[:, p])[0]
-        #     for task in tasks_array:
-        #         neighbor_list = get_neighbor(task, width, height)
-        #         for neighbor_index in neighbor_list:
-        #             if neighbor_index not in tasks_array:
-        #                 communicate_time[p] += send_cost + receive_cost
+    def nonnegativity_constraint(x):
+        matrix = x.reshape((samples, processors))
+        return matrix.flatten()
+    
+    constraint = ({'type': 'eq', 'fun': linear_constraint}, {'type': 'ineq', 'fun': nonnegativity_constraint})
+    options = {'maxiter': 1000000}
+    result = minimize(objective, matrix, options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint)
+    print("result: ",result)
+    print("optimal assignment: ", result.x)
 
-        # communicate_cost = np.max(communicate_time)
-        # retVal = np.sum(compute_cost) + communicate_cost * intervals
-        # print("retVal = ",retVal)
-        retVal = np.sum(compute_cost)
-        print (retVal)
-        return retVal
+    # set bound
+    # def inequality_constraint(assignment_matrix):
+    #     return np.subtract(np.sum(assignment_matrix.reshape(-1,processors), axis=1),1)
+    # constraint = ({'type': 'ineq', 'fun': inequality_constraint})
 
-    def equality_constraint(x):
-        # print("equality_constraint")
-        return np.sum(x.reshape(-1, processors), axis=1) - 1
+    #     assignment_matrix = assignment_matrix.reshape(-1,processors)
+    #     print("number of processor: ", processors)
+    #     print("number of intervals: ", intervals)
+    #     print("samples: ",samples)
 
-    constraints = ({'type': 'eq', 'fun': equality_constraint})
-    result = minimize(objective, assignment_matrix, constraints=constraints)
+    # def objective(assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors):
+    #     assignment_matrix = assignment_matrix.reshape(-1,processors)
+    #     compute_time_matrix = np.array(workload_matrix).T @ assignment_matrix
+    #     print("workload_matrix: ",np.array(workload_matrix).shape)
+    #     print("assignment_matrix: ",assignment_matrix.shape)
+    #     compute_cost = np.sum(np.max(compute_time_matrix, axis=1).reshape(-1, 1))
+    #     print("compute_cost: ", compute_cost)
+    #     return compute_cost
 
-    optimal_assignment = np.reshape(result.x, assignment_matrix.shape)
-    print ("done")
-    return optimal_assignment
+    # communicate_time = np.zeros(processors)
+    # for p in range(processors):
+    #     tasks_array = np.nonzero(reshaped_matrix[:, p])[0]
+    #     for task in tasks_array:
+    #         neighbor_list = get_neighbor(task, width, height)
+    #         for neighbor_index in neighbor_list:
+    #             if neighbor_index not in tasks_array:
+    #                 communicate_time[p] += send_cost + receive_cost
+    # communicate_cost = np.max(communicate_time)
+    # retVal = np.sum(compute_cost) + communicate_cost * intervals
+    # print("total cost:",retVal)
+       
+    # initialization
+    # matrix = np.zeros((samples,processors))
+    # for i in range(samples):
+    #     matrix[i][np.random.randint(0, processors)] =  1
+    # print("matrix dimension: ",matrix.shape)
+    # print(matrix)
+
+    # # set constraint
+    # def linear_constraint(assignment_matrix):
+    #     return np.subtract(np.sum(assignment_matrix.reshape(-1,processors), axis=1),1)
+    # constraint = ({'type': 'eq', 'fun': linear_constraint})
+
+    # result = minimize(objective, matrix, args=(send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints=constraint, method='Nelder-Mead')
+    # optimal_assignment = np.reshape(result.x, matrix.shape)
+    # np.set_printoptions(threshold=np.inf)
+    # print("optimal assignment: ", optimal_assignment)
+    # return optimal_assignment
