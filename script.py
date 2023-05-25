@@ -329,9 +329,8 @@ def lp_comp_comm(function: str, workdir: str, sendCost: int, recvCost: int, widt
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        # print("start lp_commute_compute")
         solution = lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
-        # print("finished lo_commute_compute")
+        # print("solution: \n",solution)
         # write the assignments to a file
         df = pd.DataFrame(solution)
         df.to_csv(file_name, header=False, index=False)
@@ -350,9 +349,9 @@ def lp_comp_comm(function: str, workdir: str, sendCost: int, recvCost: int, widt
             return -5
         # the name of the file to write the assignments to
         if extra >= 0:
-            file_name = os.path.join(outdir, 'qlp_{}_{}.assignment'.format(function, extra))
+            file_name = os.path.join(outdir, 'lp_compute_commute_{}_{}.assignment'.format(function, extra))
         else:
-            file_name = os.path.join(outdir, 'qlp_{}.assignment'.format(function))
+            file_name = os.path.join(outdir, 'lp_compute_commute_{}.assignment'.format(function))
         # if the file already exists, do not run the post processing function
         if os.path.exists(file_name):
             print('Skipping post processing function at {}'.format(file_name))
