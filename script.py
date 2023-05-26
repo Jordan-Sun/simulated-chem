@@ -6,7 +6,7 @@ import simple_assignment
 import complex_assignment
 import lp_assignment
 import qlp_assignment
-from lp_compute_commute import lp_compute_commute
+import lp_compute_commute 
 import simulation
 import sys
 import os
@@ -302,10 +302,9 @@ def qlp(function: str, workdir: str, width: int, height: int, t: int, p: int, ex
     return 0
 
 def lp_comp_comm(function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
+
     # the directory to write the results to
-    # print("p ",p)
     outdir = os.path.join(workdir, str('p_{}'.format(p)))
-    # print("workdir ",workdir)
     solution_file = 'lp_compute_commute.solution'
     if not os.path.exists(outdir):
         os.mkdir(outdir)
@@ -329,7 +328,7 @@ def lp_comp_comm(function: str, workdir: str, sendCost: int, recvCost: int, widt
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        solution = lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
+        solution = lp_compute_commute.lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
         # print("solution: \n",solution)
         # write the assignments to a file
         df = pd.DataFrame(solution)
@@ -361,9 +360,10 @@ def lp_comp_comm(function: str, workdir: str, sendCost: int, recvCost: int, widt
         # the assignment function
         assignments = None
         if function == 'max':
-            assignments = qlp_assignment.qlp_max(solution, samples, p)
+            assignments = lp_compute_commute.lp_max(solution, samples, p)
+            print("assignments: \n",assignments)
         elif function == 'random':
-            assignments = qlp_assignment.qlp_random(solution, samples, p)
+            assignments = lp_compute_commute.lp_random(solution, samples, p)
         else:
             print('Invalid assignment function')
             return -6

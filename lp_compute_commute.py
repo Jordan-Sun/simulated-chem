@@ -3,6 +3,7 @@ from scipy.optimize import minimize
 from complex_assignment import get_neighbor
 from complex_assignment import whtoi
 from complex_assignment import itowh
+import random
 from typing import List, Tuple
 # This lp solver will consider both the communication and computation time and try to minimize the total time
 # variables:
@@ -14,18 +15,21 @@ from typing import List, Tuple
 # compute_cost_matrix (intervals x 1)
 # communicate_cost_matrix (intervals x 1)
 
+def get_dimensions(lst):
+    dimensions = []
+    while isinstance(lst, list):
+        dimensions.append(len(lst))
+        lst = lst[0] if lst else None
+    return dimensions
+
 def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
 
-    # samples = 4
-    # intervals = 1
-    # processors = 2
-    
     workload_matrix = np.array(workload_matrix)[:samples, :intervals]
     print("samples: ",samples)
     print("intervals: ",intervals)
     print("processors: ",processors)
     print("workload_matrix shape: ",workload_matrix.shape)
-    print("workload_matrix: ",workload_matrix)
+    # print("workload_matrix: ",workload_matrix)
     
 
     #conversion into numpy matrix
@@ -49,7 +53,7 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
         communicate_cost = np.max(communicate_time)
         # print("communication_time: ",communicate_time)
         total_cost += communicate_cost * intervals
-        print("total cost: ",total_cost)
+        # print("total cost: ",total_cost)
         return total_cost
 
     matrix = np.zeros((samples,processors))
@@ -72,5 +76,26 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
     options = {'maxiter': 1000000}
     result = minimize(objective, matrix, options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint)
     # print("result: \n",result)
-    print("optimal assignment: \n", result.x.reshape(-1,processors))
-    return result.x
+    return (result.x.reshape(-1,processors)).tolist()
+
+# convert lp assignment to assignment by max
+def lp_max(solution: list, samples: int, processors: int) -> list:
+    # construct assignment
+    result = []
+    for i in range(samples):
+        assignment = 0
+        value = 0
+        for k in range(processors):
+            if solution[i][k] > value:
+                assignment = k
+                value = solution[i][k]
+        result.append(assignment)
+    return result
+
+# convert lp assignment to assignment by randomization based on solution
+def lp_random(solution: list, samples: int, processors: int) -> list:
+    result = []
+    for i in range(samples):
+        weights = [solution[i][k] for k in range(processors)]
+        result.append(random.choices(range(processors), weights = weights)[0])
+    return result
