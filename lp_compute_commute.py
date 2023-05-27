@@ -53,7 +53,7 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
         communicate_cost = np.max(communicate_time)
         # print("communication_time: ",communicate_time)
         total_cost += communicate_cost * intervals
-        # print("total cost: ",total_cost)
+        print("total cost: ",total_cost)
         return total_cost
 
     matrix = np.zeros((samples,processors))
