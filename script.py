@@ -3,6 +3,7 @@ script.py <task> <function> <job index> [extra]
 Runs the function with the parameters specified by the job index.
 '''
 import simple_assignment
+import complex_assignment
 import lp_assignment
 import qlp_assignment
 import lp_compute_commute 
@@ -11,7 +12,6 @@ import sys
 import os
 import pandas as pd
 from typing import Tuple
-import complex_assignment
 
 procs = [16, 128, 1024]
 xs = [20, 50, 100, 200]

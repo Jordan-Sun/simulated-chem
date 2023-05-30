@@ -41,7 +41,8 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
         compute_cost = np.sum(np.max(compute_time_matrix, axis=1).reshape(-1, 1))
         total_cost = compute_cost
         communicate_time = np.zeros(processors)
-        # communication only
+        communicate_cost = 0
+         # communication only
         for p in range(processors):
             tasks_array = np.nonzero(assignment_matrix[:, p])[0]
             # print("processor ",p," task_array: ", tasks_array)
