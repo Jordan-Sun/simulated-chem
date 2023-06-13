@@ -75,7 +75,8 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
     
     constraint = ({'type': 'eq', 'fun': linear_constraint}, {'type': 'ineq', 'fun': nonnegativity_constraint})
     options = {'maxiter': 1000000}
-    result = minimize(objective, matrix, options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint, tol = 50.00)
+    tolerance = 1
+    result = minimize(objective, matrix, options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint, tol = tolerance)
     # print("result: \n",result)
     return (result.x.reshape(-1,processors)).tolist()
 
