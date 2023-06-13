@@ -466,6 +466,7 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
 # executes the alternative simulation function and write the results to a file
 def alt_simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int):
     # the directory to write the results to
+    print("function: ", function)
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     if not os.path.exists(outdir):
         os.mkdir(outdir)
@@ -489,13 +490,13 @@ def alt_simulate(function: str, workdir: str, width: int, height: int, t: int, p
         assignment_name = os.path.join(outdir, '{}.assignment'.format(function))
         output_name = os.path.join(outdir, '{}.altres'.format(function))
     
-    communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast']
+    communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast', 'lp_compute_commute']
     if function in communication_aware_functions:
         if sendCost != 1:
             assignment_name = assignment_name.replace('.assignment', '_send{}.assignment'.format(sendCost))
         if recvCost != 1:
             assignment_name = assignment_name.replace('.assignment', '_recv{}.assignment'.format(recvCost))
-    
+    print("ässignment name: ", assignment_name)
     if sendCost != 1:
         output_name = output_name.replace('.altres', '_send{}.altres'.format(sendCost))
     if recvCost != 1:
