@@ -28,7 +28,7 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
     print("samples: ",samples)
     print("intervals: ",intervals)
     print("processors: ",processors)
-    print("workload_matrix shape: ",workload_matrix.shape)
+    # print("workload_matrix shape: ",workload_matrix.shape)
     # print("workload_matrix: ",workload_matrix)
     
 
@@ -42,7 +42,7 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
         total_cost = compute_cost
         communicate_time = np.zeros(processors)
         communicate_cost = 0
-         # communication only
+        # communication only
         for p in range(processors):
             tasks_array = np.nonzero(assignment_matrix[:, p])[0]
             # print("processor ",p," task_array: ", tasks_array)
@@ -75,7 +75,7 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
     
     constraint = ({'type': 'eq', 'fun': linear_constraint}, {'type': 'ineq', 'fun': nonnegativity_constraint})
     options = {'maxiter': 1000000}
-    result = minimize(objective, matrix, options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint)
+    result = minimize(objective, matrix, options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint, tol = 50.00)
     # print("result: \n",result)
     return (result.x.reshape(-1,processors)).tolist()
 
