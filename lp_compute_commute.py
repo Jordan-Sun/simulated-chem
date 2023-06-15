@@ -25,13 +25,11 @@ def get_dimensions(lst):
 def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
 
     workload_matrix = np.array(workload_matrix)[:samples, :intervals]
-    print("samples: ",samples)
-    print("intervals: ",intervals)
-    print("processors: ",processors)
+    # print("samples: ",samples)
+    # print("intervals: ",intervals)
+    # print("processors: ",processors)
     # print("workload_matrix shape: ",workload_matrix.shape)
     # print("workload_matrix: ",workload_matrix)
-    
-
     #conversion into numpy matrix
 
     def objective(assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors):
@@ -75,13 +73,13 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
     
     constraint = ({'type': 'eq', 'fun': linear_constraint}, {'type': 'ineq', 'fun': nonnegativity_constraint})
     options = {'maxiter': 1000000}
-    tolerance = 1
+    tolerance = 0.001
     result = minimize(objective, matrix, options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint, tol = tolerance)
     # print("result: \n",result)
     return (result.x.reshape(-1,processors)).tolist()
 
 # convert lp assignment to assignment by max
-def lp_max(solution: list, samples: int, processors: int) -> list:
+def lp_compute_commute_max(solution: list, samples: int, processors: int) -> list:
     # construct assignment
     result = []
     for i in range(samples):
@@ -95,7 +93,7 @@ def lp_max(solution: list, samples: int, processors: int) -> list:
     return result
 
 # convert lp assignment to assignment by randomization based on solution
-def lp_random(solution: list, samples: int, processors: int) -> list:
+def lp_compute_commute_random(solution: list, samples: int, processors: int) -> list:
     result = []
     for i in range(samples):
         weights = [solution[i][k] for k in range(processors)]

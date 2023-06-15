@@ -301,10 +301,8 @@ def qlp(function: str, workdir: str, width: int, height: int, t: int, p: int, ex
                 file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
     return 0
 
-def qlp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
+def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
     # the directory to write the results to
-    print("workdir ",workdir)
-    print("p ",p)
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     solution_file = 'qlp_compute_commute.solution'
     if not os.path.exists(outdir):
@@ -314,10 +312,10 @@ def qlp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: in
         file_name = os.path.join(outdir, solution_file)
         # if the file already exists, do not run the lp function
         if os.path.exists(file_name):
-            print('Skipping qlp_compute_commute function at {}'.format(file_name))
+            print('Skipping lp_compute_commute function at {}'.format(file_name))
             return 1
         else:
-            print('Running qlp_compute_commute function at {}'.format(file_name))
+            print('Running lp_compute_commute function at {}'.format(file_name))
         # the name of the file to read the workload from
         input_name = os.path.join(workdir, 'workload.csv')
         if not os.path.exists(input_name):
@@ -329,7 +327,7 @@ def qlp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: in
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        solution = lp_compute_commute.lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
+        solution = lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
         # write the assignments to a file
         df = pd.DataFrame(solution)
         df.to_csv(file_name, header=False, index=False)
@@ -348,9 +346,9 @@ def qlp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: in
             return -5
         # the name of the file to write the assignments to
         if extra >= 0:
-            file_name = os.path.join(outdir, 'qlp_{}_{}.assignment'.format(function, extra))
+            file_name = os.path.join(outdir, 'lp_{}_{}.assignment'.format(function, extra))
         else:
-            file_name = os.path.join(outdir, 'qlp_{}.assignment'.format(function))
+            file_name = os.path.join(outdir, 'lp_{}.assignment'.format(function))
         # if the file already exists, do not run the post processing function
         if os.path.exists(file_name):
             print('Skipping post processing function at {}'.format(file_name))
@@ -360,9 +358,9 @@ def qlp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: in
         # the assignment function
         assignments = None
         if function == 'max':
-            assignments = qlp_assignment.qlp_max(solution, samples, p)
+            assignments = lp_compute_commute.lp_max(solution, samples, p)
         elif function == 'random':
-            assignments = qlp_assignment.qlp_random(solution, samples, p)
+            assignments = lp_compute_commute.lp_random(solution, samples, p)
         else:
             print('Invalid assignment function')
             return -6
@@ -465,7 +463,7 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
 # executes the alternative simulation function and write the results to a file
 def alt_simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int):
     # the directory to write the results to
-    print("function: ", function)
+    # print("function: ", function)
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     if not os.path.exists(outdir):
         os.mkdir(outdir)
@@ -541,9 +539,9 @@ def main():
         print('Usage: python3 script.py <task> <function> <index> [extra] [sendCost] [recvCost]')
         return -1
     task_name = sys.argv[1]
-    print("task_name:", task_name)
+    # print("task_name:", task_name)
     function_name = sys.argv[2]
-    print("function name", function_name)
+    # print("function name", function_name)
     index = int(sys.argv[3])
     if len(sys.argv) > 4:
         extra = int(sys.argv[4])
@@ -582,6 +580,8 @@ def main():
         return simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
     elif task_name == 'alt_simulate':
         return alt_simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
+    elif task_name == 'lp_compute_commute':
+        return lp_compute_commute(function_name, workdir, sendCost, recvCost, x, y, t, p)
     elif task_name == 'lp_compute_commute':
         return qlp_compute_commute(function_name, workdir, sendCost, recvCost, x, y, t, p)
     else:
