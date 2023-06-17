@@ -3,26 +3,21 @@ from scipy.optimize import minimize
 from complex_assignment import get_neighbor
 from complex_assignment import whtoi
 from complex_assignment import itowh
-import random
 from typing import List, Tuple
 # This lp solver will consider both the communication and computation time and try to minimize the total time
 # variables:
 # samples: s
 # intervals: t
 # processors: p
-# assignment_matrix (samples x processors)
-# workload_matrix: samples x intervals
-# compute_cost_matrix (intervals x 1)
-# communicate_cost_matrix (intervals x 1)
-
-def get_dimensions(lst):
-    dimensions = []
-    while isinstance(lst, list):
-        dimensions.append(len(lst))
-        lst = lst[0] if lst else None
-    return dimensions
+# assignment_matrix (s x p)
+# workload_matrix (t x s=)
+# compute_cost_matrix (t x 1)
+# communicate_cost_matrix (t x 1)
 
 def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
+    workload_matrix = np.array(workload_matrix)
+    assignment_matrix = np.eye(processors)[np.random.choice(processors, samples)]
+    assignment_matrix = assignment_matrix.reshape((-1, processors))
 
     workload_matrix = np.array(workload_matrix)[:samples, :intervals]
     # print("samples: ",samples)
@@ -55,11 +50,12 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
         print("total cost: ",total_cost)
         return total_cost
 
-    matrix = np.zeros((samples,processors))
-    for i in range(samples):
-        matrix[i][np.random.randint(0, processors)] =  1
-    # print("assignment_matrix dimension: ",matrix.shape)
-    # print(matrix)
+        # communicate_cost = np.max(communicate_time)
+        # retVal = np.sum(compute_cost) + communicate_cost * intervals
+        # print("retVal = ",retVal)
+        retVal = np.sum(compute_cost)
+        print (retVal)
+        return retVal
 
     # A task can only be partially assigned to one processor
     def linear_constraint(assignment_matrix):

@@ -314,10 +314,10 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
         file_name = os.path.join(outdir, solution_file)
         # if the file already exists, do not run the lp function
         if os.path.exists(file_name):
-            print('Skipping lp_compute_commute function at {}'.format(file_name))
+            print('Skipping qlp_compute_commute function at {}'.format(file_name))
             return 1
         else:
-            print('Running lp_compute_commute function at {}'.format(file_name))
+            print('Running qlp_compute_commute function at {}'.format(file_name))
         # the name of the file to read the workload from
         input_name = os.path.join(workdir, 'workload.csv')
         if not os.path.exists(input_name):
@@ -329,8 +329,7 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        solution = lp_computation_commute.lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
-        print("solution found")
+        solution = lp_compute_commute.lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
         # write the assignments to a file
         df = pd.DataFrame(solution)
         df.to_csv(file_name, header=False, index=False)
@@ -349,9 +348,9 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
             return -5
         # the name of the file to write the assignments to
         if extra >= 0:
-            file_name = os.path.join(outdir, 'lp_compute_commute_{}_{}.assignment'.format(function, extra))
+            file_name = os.path.join(outdir, 'qlp_{}_{}.assignment'.format(function, extra))
         else:
-            file_name = os.path.join(outdir, 'lp_compute_commute_{}.assignment'.format(function))
+            file_name = os.path.join(outdir, 'qlp_{}.assignment'.format(function))
         # if the file already exists, do not run the post processing function
         if os.path.exists(file_name):
             print('Skipping post processing function at {}'.format(file_name))
@@ -541,9 +540,9 @@ def main():
         print('Usage: python3 script.py <task> <function> <index> [extra] [sendCost] [recvCost]')
         return -1
     task_name = sys.argv[1]
-    # print("task_name:", task_name)
+    print("task_name:", task_name)
     function_name = sys.argv[2]
-    # print("function name", function_name)
+    print("function name", function_name)
     index = int(sys.argv[3])
     if len(sys.argv) > 4:
         extra = int(sys.argv[4])
