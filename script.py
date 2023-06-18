@@ -302,22 +302,29 @@ def qlp(function: str, workdir: str, width: int, height: int, t: int, p: int, ex
     return 0
 
 def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
+###########
+    print("extra ", extra)
     # the directory to write the results to
-    # print("workdir ",workdir)
-    # print("p ",p)
     outdir = os.path.join(workdir, 'p_{}'.format(p))
-    solution_file = 'lp_compute_commute.solution'
     if not os.path.exists(outdir):
         os.mkdir(outdir)
+    solution_file = 'lp_compute_commute.solution'
+    # the name of the solution file to write the assignments to
+    if sendCost != 1:
+        solution_file = solution_file.replace('.solution', '_send{}.solution'.format(sendCost))
+    if recvCost != 1:
+        solution_file = solution_file.replace('.solution', '_recv{}.solution'.format(recvCost))
+###########
+    
     if function == 'solve':
-        # the name of the file to write the assignments to
+        # the name of the file to write the solution to
         file_name = os.path.join(outdir, solution_file)
         # if the file already exists, do not run the lp function
         if os.path.exists(file_name):
-            print('Skipping qlp_compute_commute function at {}'.format(file_name))
+            print('Skipping lp_compute_commute function at {}'.format(file_name))
             return 1
         else:
-            print('Running qlp_compute_commute function at {}'.format(file_name))
+            print('Running lp_compute_commute function at {}'.format(file_name))
         # the name of the file to read the workload from
         input_name = os.path.join(workdir, 'workload.csv')
         if not os.path.exists(input_name):
@@ -329,7 +336,7 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        solution = lp_compute_commute.lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
+        solution = lp_computation_commute.lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
         # write the assignments to a file
         df = pd.DataFrame(solution)
         df.to_csv(file_name, header=False, index=False)
@@ -348,9 +355,9 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
             return -5
         # the name of the file to write the assignments to
         if extra >= 0:
-            file_name = os.path.join(outdir, 'qlp_{}_{}.assignment'.format(function, extra))
+            file_name = os.path.join(outdir, 'lp_compute_commute_{}_{}.assignment'.format(function, extra))
         else:
-            file_name = os.path.join(outdir, 'qlp_{}.assignment'.format(function))
+            file_name = os.path.join(outdir, 'lp_compute_commute_{}.assignment'.format(function))
         # if the file already exists, do not run the post processing function
         if os.path.exists(file_name):
             print('Skipping post processing function at {}'.format(file_name))
@@ -375,6 +382,7 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
 # executes a simulation function and write the results to a file
 def simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int):
     # the directory to write the results to
+    print("extra ",extra)
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     if not os.path.exists(outdir):
         os.mkdir(outdir)
@@ -417,7 +425,6 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
         else:
             assignment_name = os.path.join(outdir, '{}.assignment'.format(function))
             output_name = os.path.join(outdir, '{}.result'.format(function))
-        
         communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast']
         if function in communication_aware_functions:
             if sendCost != 1:
@@ -429,7 +436,7 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
             output_name = output_name.replace('.result', '_send{}.result'.format(sendCost))
         if recvCost != 1:
             output_name = output_name.replace('.result', '_recv{}.result'.format(recvCost))
-        
+        print("assignment name: ",assignment_name, "\n")
         if not os.path.exists(assignment_name):
             print('Assignment file does not exist')
             return -6
@@ -582,7 +589,7 @@ def main():
     elif task_name == 'alt_simulate':
         return alt_simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
     elif task_name == 'lp_compute_commute':
-        return lp_compute_commute(function_name, workdir, sendCost, recvCost, x, y, t, p)
+        return lp_compute_commute(function_name, workdir, sendCost, recvCost, x, y, t, p, extra)
     else:
         print('Invalid task name')
         return -3
