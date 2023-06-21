@@ -358,7 +358,12 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
             file_name = os.path.join(outdir, 'lp_compute_commute_{}_{}.assignment'.format(function, extra))
         else:
             file_name = os.path.join(outdir, 'lp_compute_commute_{}.assignment'.format(function))
+        if sendCost != 1:
+            file_name = file_name.replace('.assignment', '_send{}.assignment'.format(sendCost))
+        if recvCost != 1:
+            file_name = file_name.replace('.assignment', '_recv{}.assignment'.format(recvCost))
         # if the file already exists, do not run the post processing function
+        print("file name: ",file_name)
         if os.path.exists(file_name):
             print('Skipping post processing function at {}'.format(file_name))
             return 1
@@ -382,7 +387,6 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
 # executes a simulation function and write the results to a file
 def simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int):
     # the directory to write the results to
-    print("extra ",extra)
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     if not os.path.exists(outdir):
         os.mkdir(outdir)
@@ -425,7 +429,7 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
         else:
             assignment_name = os.path.join(outdir, '{}.assignment'.format(function))
             output_name = os.path.join(outdir, '{}.result'.format(function))
-        communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast']
+        communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast', 'lp_compute_commute_max', 'lp_compute_commute_random']
         if function in communication_aware_functions:
             if sendCost != 1:
                 assignment_name = assignment_name.replace('.assignment', '_send{}.assignment'.format(sendCost))
@@ -436,7 +440,7 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
             output_name = output_name.replace('.result', '_send{}.result'.format(sendCost))
         if recvCost != 1:
             output_name = output_name.replace('.result', '_recv{}.result'.format(recvCost))
-        print("assignment name: ",assignment_name, "\n")
+        print("assignment file name: ",assignment_name)
         if not os.path.exists(assignment_name):
             print('Assignment file does not exist')
             return -6
@@ -501,7 +505,6 @@ def alt_simulate(function: str, workdir: str, width: int, height: int, t: int, p
             assignment_name = assignment_name.replace('.assignment', '_send{}.assignment'.format(sendCost))
         if recvCost != 1:
             assignment_name = assignment_name.replace('.assignment', '_recv{}.assignment'.format(recvCost))
-    print("ässignment name: ", assignment_name)
     if sendCost != 1:
         output_name = output_name.replace('.altres', '_send{}.altres'.format(sendCost))
     if recvCost != 1:
@@ -547,9 +550,9 @@ def main():
         print('Usage: python3 script.py <task> <function> <index> [extra] [sendCost] [recvCost]')
         return -1
     task_name = sys.argv[1]
-    print("task_name:", task_name)
+    # print("task_name:", task_name)
     function_name = sys.argv[2]
-    print("function name", function_name)
+    # print("function name", function_name)
     index = int(sys.argv[3])
     if len(sys.argv) > 4:
         extra = int(sys.argv[4])
@@ -567,7 +570,22 @@ def main():
     if index < 1:
         print('Invalid job index')
         return -2
-
+    # ###### expand folder output/x_5/y_5
+    # for base_directory in ['t_20', 't_50', 't_100', 't_200']:
+    #     this_directory = os.path.join("output", "x_5", "y_5",base_directory)
+    #     for r in ['2','5','10','20']:
+    #         r_name = f"r_{r}"
+    #         r_path = os.path.join(this_directory, r_name)
+    #         os.makedirs(r_path, exist_ok=True)
+    #         for x in range(1, 21):
+    #             trial_name = f"trial_{x}"
+    #             trial_path = os.path.join(r_path, trial_name)
+    #             os.makedirs(trial_path, exist_ok=True)
+    #             for p in ['5', '16', '128', '1024']: 
+    #                 p_name = f"p_{p}"
+    #                 p_path = os.path.join(trial_path, p_name)
+    #                 os.makedirs(p_path, exist_ok=True)
+    # ######
     # convert the job index to the parameters
     x, y, t, r, p, trial = index_to_params(index)
     workdir = os.path.join('output', 'x_{}'.format(x), 'y_{}'.format(y), 't_{}'.format(t), 'r_{}'.format(r), 'trial_{}'.format(trial))
