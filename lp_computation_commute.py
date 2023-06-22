@@ -22,7 +22,7 @@ def get_dimensions(lst):
         lst = lst[0] if lst else None
     return dimensions
 
-def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
+def lp_compute_commute(matrix: np.ndarray, send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
 
     workload_matrix = np.array(workload_matrix).reshape(-1,intervals)
     # print("samples: ",samples)
@@ -44,7 +44,6 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
         communicate_cost = 0
         # communication only
         for p in range(processors):
-            # Find task_array of processor p
             # Method 1:
             tasks_array = []
             for i in range(samples):
@@ -52,29 +51,20 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
                     tasks_array.append(i)
             # Method 2:
             # tasks_array = np.nonzero(assignment_matrix[:, p])[0]
-            
-            # print("processor ",p," tasks_array: ", tasks_array)
-            # print("assignment_matrix: ",assignment_matrix)
-            # print("task_array of ",p,": ", tasks_array)
             for task in tasks_array:
                 # print("task: ",task)
                 task_neighbor_array = get_neighbor(task, width, height)
-                # print ("neighbor of ", task, " is: ",task_neighbor_array)
-                # print("neighbor list: ",neighbor_list)
-                # print("processor ", p," neighbor_list: ",neighbor_list)
                 for neighbor in task_neighbor_array:
                     # Compute communication cost of a neighbor
                     # Method 1: 
                     # communicate_time[p] += (send_cost + receive_cost) * (np.argmax(assignment_matrix[neighbor]) != np.argmax(assignment_matrix[task]))
                     # Method 2:
                     communicate_time[p] += (send_cost + receive_cost) * (1-assignment_matrix[neighbor][p])
-                    # print("neighbor processor ", np.argmax(assignment_matrix[neighbor]), " task processor: ", np.argmax(assignment_matrix[task]))
-                    # communicate_time[p] += (send_cost + receive_cost) * (np.argmax(assignment_matrix[neighbor]) == np.argmax(assignment_matrix[task]))
         communicate_cost = np.max(communicate_time)
         # print("communicate time of processor: ",communicate_time)
-        print("communication_time: ",communicate_cost)
+        # print("communication_time: ",communicate_cost)
         total_cost += communicate_cost * intervals
-        print("total cost: ",total_cost)
+        # print("total cost: ",total_cost)
         return total_cost
 
     # A task can only be partially assigned to one processor
@@ -89,15 +79,15 @@ def lp_compute_commute(send_cost: int, receive_cost: int, width: int, height: in
         return matrix.flatten()
         
     # intialize assignment_matrix
-    matrix = np.zeros((samples,processors))
-    for i in range(samples):
-        matrix[i][np.random.randint(0, processors)] =  1
+    # matrix = np.zeros((samples,processors))
+    # for i in range(samples):
+    #     matrix[i][np.random.randint(0, processors)] =  1
+    # print("matrix: ",matrix)
     constraint = ({'type': 'eq', 'fun': linear_constraint}, {'type': 'ineq', 'fun': nonnegativity_constraint})
-    print("matrix: ",matrix)
-    tolerance = 0.1
-    max_iterations = 10
+    tolerance = 0.01
+    max_iterations = 100
     options = {'maxiter': max_iterations}
-    result = minimize(objective, matrix, options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint, tol = tolerance)
+    result = minimize(objective, matrix,options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint, tol = tolerance)
     # print("result: \n",result)
     return (result.x.reshape(-1,processors)).tolist()
 

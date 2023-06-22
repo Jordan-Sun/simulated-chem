@@ -12,6 +12,7 @@ import os
 import pandas as pd
 from typing import Tuple
 import complex_assignment
+import numpy as np
 
 procs = [16, 128, 1024]
 xs = [20, 50, 100, 200]
@@ -303,6 +304,7 @@ def qlp(function: str, workdir: str, width: int, height: int, t: int, p: int, ex
 
 def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
 ###########
+    samples = width * height
     print("extra ", extra)
     # the directory to write the results to
     outdir = os.path.join(workdir, 'p_{}'.format(p))
@@ -317,6 +319,10 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
 ###########
     
     if function == 'solve':
+        # initialize an assignment to feed into the lp function
+        matrix = np.zeros((samples,p))
+        for i in range(samples):
+            matrix[i][np.random.randint(0, p)] =  1
         # the name of the file to write the solution to
         file_name = os.path.join(outdir, solution_file)
         # if the file already exists, do not run the lp function
@@ -336,7 +342,7 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        solution = lp_computation_commute.lp_compute_commute(sendCost, recvCost, width, height, workload, samples, t, p)
+        solution = lp_computation_commute.lp_compute_commute(matrix, sendCost, recvCost, width, height, workload, samples, t, p)
         # write the assignments to a file
         df = pd.DataFrame(solution)
         df.to_csv(file_name, header=False, index=False)

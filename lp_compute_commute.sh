@@ -1,7 +1,7 @@
 #!/bin/bash
 
-sendCost=2
-recvCost=3
+sendCost=5
+recvCost=10
 if [[ -z $1 ]];
 then 
     echo "usage: $0 <group>"
