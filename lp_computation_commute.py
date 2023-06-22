@@ -84,7 +84,7 @@ def lp_compute_commute(matrix: np.ndarray, send_cost: int, receive_cost: int, wi
     #     matrix[i][np.random.randint(0, processors)] =  1
     # print("matrix: ",matrix)
     constraint = ({'type': 'eq', 'fun': linear_constraint}, {'type': 'ineq', 'fun': nonnegativity_constraint})
-    tolerance = 0.01
+    tolerance = 0.001
     max_iterations = 100
     options = {'maxiter': max_iterations}
     result = minimize(objective, matrix,options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint, tol = tolerance)
