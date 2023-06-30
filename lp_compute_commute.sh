@@ -10,7 +10,6 @@ else
     do
         let index=$(($group*100 + $1))
         echo "Running $index."
-        # sendCost = 2 recvCost = 3
         # python3 script.py lp_compute_commute solve $index [extra](-1) [sendCost] [recvCost]
         for extra in {0..9}; do
             # Execute the command with the fixed index value

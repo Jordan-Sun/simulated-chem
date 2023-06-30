@@ -10,6 +10,14 @@ def print_matrix(matrix, width, height):
         print("\n")
     return 0
 
+def print_solution(solution, width, height):
+    for i in range(height):
+        for j in range(width):
+            for element in solution[j + width * i]:
+                print("{:.3f}".format(element), end=' ')
+            print("\n")
+    return 0
+
 def randomly_generate_matrix(samples, processors):
     initial_assignment_matrix = np.zeros((samples,processors))
     for i in range(samples):
@@ -40,21 +48,24 @@ def test_function_lp_compute_commute(input_totalComputationBroadcast, workload_m
     final_assignment = input_assignment_matrix
     for iteration in range (total_iteration):
         solution = lp_computation_commute.lp_compute_commute(input_assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors)
+        # print_solution(solution, width, height)
         assignment_matrix = np.array(lp_computation_commute.lp_compute_commute_max(solution, samples, processors))
         totalComputation, totalBroadcast, totalUnicast, totalComputationBroadcast, totalComputationUnicast = simulation.simulate(np.array(workload_matrix).reshape(samples,intervals).tolist(), assignment_matrix.tolist(), width, height, intervals, processors, send_cost, receive_cost)
         if (PrevioustotalComputationBroadcast > totalComputationBroadcast):
             final_assignment = assignment_matrix
             PrevioustotalComputationBroadcast = totalComputationBroadcast
-            print(iteration+1, "th round:")
             print("total Computation: ",totalComputation)
             print("total Broadcast: ",totalBroadcast)
             print("total Unicast: ",totalUnicast)
             print("total Computation Broadcast: ",totalComputationBroadcast)
             print("total Computation Unicast: ",totalComputationUnicast)
+            print_solution(solution, width, height)
+            print_matrix(assignment_matrix, width, height)
+            print(iteration+1, "th round:")
             print("\n")
         else:
             print(iteration+1, "th round:")
-            print("This update is worse than previous ones\n")
+            # print("This update is worse than previous ones\n")
         # formatting the output assignment
         tmp_matrix = np.zeros((samples,processors))
         for sample in range(samples):
@@ -67,19 +78,20 @@ def test_function_lp_compute_commute(input_totalComputationBroadcast, workload_m
 
 def main():
     send_cost = 5
-    total_iteration = 10
+    total_iteration = 20
     receive_cost = 5
-    width = 10
-    height = 10
-    intervals = 5
-    processors = 3
+    width =8
+    height = 8
+    intervals = 3
+    processors = 5
     samples = width * height
     # generate workload matrix
     workload_matrix = [2 * i + 2 for i in range(height * width * intervals)]
     # random initialization
-    # initial_assignment_matrix = randomly_generate_matrix(samples, processors)
+    initial_assignment_matrix = randomly_generate_matrix(samples, processors)
+    print_solution(initial_assignment_matrix, width, height)
     # greedy initialization
-    initial_assignment_matrix = greedily_generate_matrix(np.array(workload_matrix).reshape(-1,intervals).tolist(), width, height, intervals, processors, -1)
+    # initial_assignment_matrix = greedily_generate_matrix(np.array(workload_matrix).reshape(-1,intervals).tolist(), width, height, intervals, processors, -1)
     matrix = matrix_to_list(initial_assignment_matrix, samples)
     
     totalComputation, totalBroadcast, totalUnicast, totalComputationBroadcast, totalComputationUnicast = simulation.simulate(np.array(workload_matrix).reshape(samples,intervals).tolist(), matrix, width, height, intervals, processors, send_cost, receive_cost)
