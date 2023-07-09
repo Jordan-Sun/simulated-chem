@@ -51,16 +51,16 @@ def test_function_lp_compute_commute(input_totalComputationBroadcast, workload_m
         # print_solution(solution, width, height)
         assignment_matrix = np.array(lp_computation_commute.lp_compute_commute_max(solution, samples, processors))
         totalComputation, totalBroadcast, totalUnicast, totalComputationBroadcast, totalComputationUnicast = simulation.simulate(np.array(workload_matrix).reshape(samples,intervals).tolist(), assignment_matrix.tolist(), width, height, intervals, processors, send_cost, receive_cost)
-        if (PrevioustotalComputationBroadcast > totalComputationBroadcast):
+        if (PrevioustotalComputationBroadcast > totalComputationBroadcast or iteration == total_iteration - 1):
             final_assignment = assignment_matrix
             PrevioustotalComputationBroadcast = totalComputationBroadcast
+            print_solution(solution, width, height)
+            print_matrix(assignment_matrix, width, height)
             print("total Computation: ",totalComputation)
             print("total Broadcast: ",totalBroadcast)
             print("total Unicast: ",totalUnicast)
             print("total Computation Broadcast: ",totalComputationBroadcast)
             print("total Computation Unicast: ",totalComputationUnicast)
-            print_solution(solution, width, height)
-            print_matrix(assignment_matrix, width, height)
             print(iteration+1, "th round:")
             print("\n")
         else:
@@ -78,11 +78,11 @@ def test_function_lp_compute_commute(input_totalComputationBroadcast, workload_m
 
 def main():
     send_cost = 5
-    total_iteration = 20
+    total_iteration = 40
     receive_cost = 5
-    width =8
-    height = 8
-    intervals = 3
+    width =5
+    height = 5
+    intervals = 20
     processors = 5
     samples = width * height
     # generate workload matrix

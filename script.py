@@ -556,26 +556,29 @@ def main():
         print('Usage: python3 script.py <task> <function> <index> [extra] [sendCost] [recvCost]')
         return -1
     task_name = sys.argv[1]
-    # print("task_name:", task_name)
+    print("task_name: ", task_name)
     function_name = sys.argv[2]
-    # print("function name", function_name)
+    print("function name: ", function_name)
     index = int(sys.argv[3])
     if len(sys.argv) > 4:
         extra = int(sys.argv[4])
     else:
         extra = -1
+    print("extra: ",extra)
     if len(sys.argv) > 5:
         sendCost = int(sys.argv[5])
     else:
         sendCost = 1
+    print("send cost: ",sendCost)
     if len(sys.argv) > 6:
         recvCost = int(sys.argv[6])
     else:
         recvCost = 1
-    
+    print("receive cost: ",recvCost)
     if index < 1:
         print('Invalid job index')
         return -2
+    print("index : ",index)
     # ###### expand folder output/x_5/y_5
     # for base_directory in ['t_20', 't_50', 't_100', 't_200']:
     #     this_directory = os.path.join("output", "x_5", "y_5",base_directory)

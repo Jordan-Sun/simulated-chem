@@ -35,7 +35,6 @@ def get_neighbor(sample: int, width: int, height: int) -> List[int]:
     down = whtoi(x, y + 1, width, height)
     return [left, right, up, down] 
 
-
 # Computation Only
 def greedy(matrix: list, width: int, height: int, intervals: int, processors: int, extra: int) -> List[int]:
     # the total number of samples is width times height
@@ -67,7 +66,7 @@ def greedy(matrix: list, width: int, height: int, intervals: int, processors: in
                 # the cost of this interval is the max of the last cost and the new cost
                 costs[processor] += max(last_costs[i], cost)
         # the processor with the first lowest cost is the one we assign the sample to
-        min_processor = costs.index(min(costs))
+        min_processor = costs.index(min(costs)) # return the leftmost occurance
         # print('Sample {} -> Processor {}'.format(sample, min_processor))
         # update the assignments
         assignments[sample] = min_processor
