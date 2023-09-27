@@ -74,7 +74,6 @@ def main():
         csv_reader = csv.reader(file)
         width = sum(1 for row in csv_reader)
     samples = width * height
-
     # read into the workload matrix and update interval
     workload_matrix = []
     with open(file_path, 'r') as file:
