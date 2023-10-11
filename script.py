@@ -5,8 +5,10 @@ Runs the function with the parameters specified by the job index.
 import lp_assignment
 import simple_assignment
 import qlp_assignment
-import lp_computation_commute
+from genetic import genetic_algorithm
+# import lp_computation_commute_two
 import simulation
+import genetic
 import sys
 import os
 import pandas as pd
@@ -119,6 +121,8 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
         assignments = complex_assignment.greedy_with_communication(workload, width, height, t, p, extra, send_cost, receive_cost, complex_assignment.dependent_unicast_cost_function)
     elif function == 'greedy_weak_neighbor_dependent_unicast':
         assignments = complex_assignment.greedy_with_communication(workload, width, height, t, p, extra, send_cost, receive_cost, complex_assignment.weak_neighbor_dependent_unicast_cost_function)
+    elif function == 'greedy_prioritize_communication':
+        assignments = complex_assignment.greedy_prioritize_communication(workload, width, height, t, p, extra, send_cost, receive_cost)
     else:
         print('Invalid assignment function')
         return -6
@@ -302,6 +306,46 @@ def qlp(function: str, workdir: str, width: int, height: int, t: int, p: int, ex
                 file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
     return 0
 
+def genetic (function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
+    outdir = os.path.join(workdir, 'p_{}'.format(p))
+    function = 'genetic'
+    solution_file = 'genetic.solution'
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
+    # the name of the file to write the assignments to
+    if extra >= 0:
+        file_name = os.path.join(outdir, '{}_{}.assignment'.format(function, extra))
+    else:
+        file_name = os.path.join(outdir, '{}.assignment'.format(function))
+    if sendCost != 1:
+        file_name = file_name.replace('.assignment', '_send{}.assignment'.format(sendCost))
+    if recvCost != 1:
+        file_name = file_name.replace('.assignment', '_recv{}.assignment'.format(recvCost))
+    # if the file already exists, do not run the assignment function
+    if os.path.exists(file_name):
+        print('Skipping assignment function at {}'.format(file_name))
+        return 1
+    else:
+        print('Running assignment function at {}'.format(file_name))
+    # the name of the file to read the workload from
+        input_name = os.path.join(workdir, 'workload.csv')
+        if not os.path.exists(input_name):
+            print('Workload file does not exist')
+            return -4
+        # read the workload from the file
+        workload = pd.read_csv(input_name, header='infer', index_col=0).values.tolist()
+        samples = width * height
+        if len(workload) != samples:
+            print('Workload file has invalid number of samples')
+            return -5
+    # the assignment function
+    assignments = genetic_algorithm(workload, width, height, t, p, extra, sendCost, recvCost)
+    # write the assignments to a file
+    with open(file_name, 'w') as file:
+        for y in range(height):
+            file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
+    return 0
+
 def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
 ###########
     samples = width * height
@@ -342,7 +386,7 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        solution = lp_computation_commute.lp_compute_commute(matrix, sendCost, recvCost, width, height, workload, samples, t, p)
+        solution = lp_computation_commute_two.lp_compute_commute(matrix, sendCost, recvCost, width, height, workload, samples, t, p)
         # write the assignments to a file
         df = pd.DataFrame(solution)
         df.to_csv(file_name, header=False, index=False)
@@ -378,9 +422,9 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
         # the assignment function
         assignments = None
         if function == 'max':
-            assignments = lp_computation_commute.lp_compute_commute_max(solution, samples, p)
+            assignments = lp_computation_commute_two.lp_compute_commute_max(solution, samples, p)
         elif function == 'random':
-            assignments = lp_computation_commute.lp_compute_commute_random(solution, samples, p)
+            assignments = lp_computation_commute_two.lp_compute_commute_random(solution, samples, p)
         else:
             print('Invalid assignment function')
             return -6
@@ -393,6 +437,7 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
 # executes a simulation function and write the results to a file
 def simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int):
     # the directory to write the results to
+    print("inside simulate")
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     if not os.path.exists(outdir):
         os.mkdir(outdir)
@@ -435,7 +480,7 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
         else:
             assignment_name = os.path.join(outdir, '{}.assignment'.format(function))
             output_name = os.path.join(outdir, '{}.result'.format(function))
-        communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast', 'lp_compute_commute_max', 'lp_compute_commute_random']
+        communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast', 'lp_compute_commute_max', 'lp_compute_commute_random', 'greedy_prioritize_communication']
         if function in communication_aware_functions:
             if sendCost != 1:
                 assignment_name = assignment_name.replace('.assignment', '_send{}.assignment'.format(sendCost))
@@ -595,9 +640,19 @@ def main():
     #                 p_path = os.path.join(trial_path, p_name)
     #                 os.makedirs(p_path, exist_ok=True)
     # ######
-    # convert the job index to the parameters
-    x, y, t, r, p, trial = index_to_params(index)
-    workdir = os.path.join('output', 'x_{}'.format(x), 'y_{}'.format(y), 't_{}'.format(t), 'r_{}'.format(r), 'trial_{}'.format(trial))
+
+    #####
+    # # convert the job index to the parameters
+    # x, y, t, r, p, trial = index_to_params(index)
+    # workdir = os.path.join('output', 'x_{}'.format(x), 'y_{}'.format(y), 't_{}'.format(t), 'r_{}'.format(r), 'trial_{}'.format(trial))
+    #####
+
+    x = 180
+    y = 270
+    t = 432
+    p = 54
+    workdir = os.path.relpath('feather')
+
     print('Entering directory: {}'.format(workdir))
     if not os.path.exists(workdir):
         print('Working directory does not exist')
@@ -617,6 +672,8 @@ def main():
         return alt_simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
     elif task_name == 'lp_compute_commute':
         return lp_compute_commute(function_name, workdir, sendCost, recvCost, x, y, t, p, extra)
+    elif task_name == 'genetic_algorithm':
+        return genetic(function_name, workdir, sendCost, recvCost, x, y, t, p, extra)
     else:
         print('Invalid task name')
         return -3

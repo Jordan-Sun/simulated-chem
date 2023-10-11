@@ -7,6 +7,7 @@ Each cell in the list represents the processor that the sample is assigned to.
 '''
 import random
 import copy
+import numpy as np
 from typing import List, Tuple
 
 # Convert a 2d index to a 1d index with wrapping
@@ -48,7 +49,9 @@ def greedy(matrix: list, width: int, height: int, intervals: int, processors: in
     # the costs as of last iteration
     last_costs = [0] * intervals
 
-    # seed the sample suffle
+    # preprocess sample order from large to small
+    # samples_list = sorted(range(len(matrix)), key=lambda i: sum(matrix[i]), reverse=True)
+    # preprocess sample order randomly
     samples_list = list(range(samples))
     if extra != -1:
         random.seed(extra)
@@ -244,7 +247,6 @@ def weak_neighbor_dependent_unicast_cost_function(matrix: list, partial_assignme
         total_cost += max_cost
     return total_cost
 
-
 def greedy_with_communication(matrix: list, width: int, height: int, intervals: int, processors: int, extra: int, send_cost: float, recv_cost: float, cost_function) -> List[int]:
     # the total number of samples is width times height
     samples = width * height
@@ -259,12 +261,12 @@ def greedy_with_communication(matrix: list, width: int, height: int, intervals: 
     # if the sample has broadcasted
     already_broadcasted = [0] * samples
 
-    # seed the sample suffle if extra is not -1
+    # preprocess data based on total cost in diminishing order
+    # samples_list = sorted(range(len(matrix)), key=lambda i: sum(matrix[i]), reverse=True)
     samples_list = list(range(samples))
     if extra != -1:
         random.seed(extra)
         random.shuffle(samples_list)
-
     # greedily loop through all the samples
     for sample in samples_list:
         # the coordinates of the sample
@@ -317,3 +319,80 @@ def greedy_with_communication(matrix: list, width: int, height: int, intervals: 
         already_broadcasted = min_already_broadcasted
     
     return assignments
+
+def greedy_prioritize_communication(matrix: list, width: int, height: int, intervals: int, processors: int, extra: int, send_cost: float, recv_cost: float) -> List[int]:
+    samples = height * width
+    assignment = [-1] * samples
+    processor_workload_array = np.zeros(processors * intervals).reshape(processors, intervals)
+    workload_array = np.array(matrix)
+    # print("workload_array: ",workload_array)
+    # print("workload_array size: ",workload_array.shape)
+    # print("height=",height)
+    # print("width=",width)
+    # print("interval=",intervals)
+    # print("samples=",samples)
+    num_rows = len(matrix)
+    num_cols = len(matrix[0]) if matrix else 0
+    constant = 0.5
+    computation_overload_threshold = constant * np.sum(workload_array, axis=0).reshape(-1, 1)/processors
+    samples_list = list(range(samples))
+    if extra != -1:
+        random.seed(extra)
+        random.shuffle(samples_list)
+    random_choice = 0
+    for sample in samples_list:
+        min_processor = -1
+        # the coordinates of the sample
+        x, y = itowh(sample, width, height)
+        # first level neighbors
+        # left
+        left = whtoi(x - 1, y, width, height)
+        # right
+        right = whtoi(x + 1, y, width, height)
+        # up
+        up = whtoi(x, y - 1, width, height)
+        # down
+        down = whtoi(x, y + 1, width, height)
+        # the list of neighbors
+        neighbors = [left, right, up, down]
+        arr = np.zeros(processors)
+        for neighbor in neighbors:
+            if assignment[neighbor] != -1:
+                arr[assignment[neighbor]] += 1
+        dictionary = dict(zip(list(range(processors)), arr))
+        dictionary = {k: v for k, v in dictionary.items() if v != 0}
+        dictionary = dict(sorted(dictionary.items(), key = lambda item: item[1], reverse = True))
+        ranked_array = list(dictionary.keys())
+        for ranked_processor in ranked_array:
+            tmp_array = processor_workload_array[ranked_processor].reshape(-1, 1) + workload_array[sample].reshape(-1, 1)
+            is_overloaded = False
+            for index in range(len(tmp_array)):
+                if(tmp_array[index]>computation_overload_threshold[index]):
+                    is_overloaded = True
+                    break
+            if is_overloaded:
+                continue
+            min_processor = ranked_processor
+            break
+        if min_processor != -1:
+            assignment[sample] = min_processor
+        else: 
+            min_cost = float("inf")
+            for processor in range(processors):
+                tmp_processor_workload_array = copy.deepcopy(processor_workload_array)
+                tmp_processor_workload_array[processor] += workload_array[sample]
+                tmp_cost = np.sum(np.max(tmp_processor_workload_array, axis = 0))
+                if min_cost > tmp_cost:
+                    min_processor = processor
+                    min_cost = tmp_cost
+            random_choice += 1
+            assignment[sample] = min_processor
+            # print("min_processor: ",min_processor)
+            # print("assignment\n",assignment)
+        # print("processor_workload_array\n",processor_workload_array)
+        processor_workload_array[min_processor] += workload_array[sample]
+    # print("processor_workload_array",processor_workload_array)
+    # print("computation_overload_threshold\n", computation_overload_threshold)
+    # print("greedy choice percentage: ",random_choice/samples)
+    # print("Number of greedy assignment: ",random_choice)
+    return assignment

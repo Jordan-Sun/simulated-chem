@@ -4,8 +4,8 @@ from complex_assignment import get_neighbor
 from complex_assignment import whtoi
 from complex_assignment import itowh
 import random
+from scipy.optimize import linprog
 from typing import List, Tuple
-# This lp solver will consider both the communication and computation time and try to minimize the total time
 # variables:
 # samples: s
 # intervals: t
@@ -22,6 +22,17 @@ def get_dimensions(lst):
         lst = lst[0] if lst else None
     return dimensions
 
+def get_tasks(tasks_array, assignment_matrix, processors, samples):
+    for i in range(samples):
+        if (np.argmax(assignment_matrix[i]) == p):
+            tasks_array.append(i)
+
+# def get_communication_cost_heuristic_one():
+    
+# def get_communication_cost_heuristic_two():
+
+# def get_communication_cost_heuristic_three():
+
 def get_computation_cost(assignment_matrix, workload_matrix):
     compute_time_matrix = np.array(workload_matrix).T @ assignment_matrix
     compute_cost = np.sum(np.max(compute_time_matrix, axis=1).reshape(-1, 1))
@@ -34,6 +45,7 @@ def get_communication_cost(assignment_matrix, send_cost, receive_cost, width, he
     for p in range(processors):
         # Method 1:
         tasks_array = []
+        # tasks_array = get_tasks(tasks_array, assignment_matrix, processors, samples)
         for i in range(samples):
             if (np.argmax(assignment_matrix[i]) == p):
                 tasks_array.append(i)
@@ -43,16 +55,14 @@ def get_communication_cost(assignment_matrix, send_cost, receive_cost, width, he
             # print("task: ",task)
             task_neighbor_array = get_neighbor(task, width, height)
             for neighbor in task_neighbor_array:
-                # Compute communication cost of a neighbor
                 # Method 1: 
-                # communicate_time[p] += (send_cost + receive_cost) * (np.argmax(assignment_matrix[neighbor]) != np.argmax(assignment_matrix[task]))
+                communicate_time[p] += (send_cost + receive_cost) * (np.argmax(assignment_matrix[neighbor]) != np.argmax(assignment_matrix[task]))
                 # Method 2:
-                communicate_time[p] += (send_cost + receive_cost) * (1-assignment_matrix[neighbor][p])
-    communicate_cost = np.max(communicate_time)
-    return communicate_cost
+                # communicate_time[p] += (send_cost + receive_cost) * (1-assignment_matrix[neighbor][p])
+    # communicate_cost = np.max(communicate_time)
+    return communicate_time
 
-def lp_compute_commute(matrix: np.ndarray, send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
-
+def lp_compute_commute(assignment_matrix: np.ndarray, send_cost: int, receive_cost: int, width: int, height: int, workload_matrix: list, samples: int, intervals: int, processors: int) -> List[List[float]]:
     workload_matrix = np.array(workload_matrix).reshape(-1,intervals)
     # print("samples: ",samples)
     # print("intervals: ",intervals)
@@ -60,18 +70,19 @@ def lp_compute_commute(matrix: np.ndarray, send_cost: int, receive_cost: int, wi
     # print("workload_matrix shape: ",workload_matrix.shape)
     # print("workload_matrix: ",workload_matrix)
     #conversion into numpy matrix
+    print("hi3")
+    def objective(assignment_matrix, communication_cost_array, communicate_cost):
+        total_cost = np.sum(communication_cost_array) + communicate_cost
+        print("hi2")
+        # assignment_matrix = assignment_matrix.reshape(-1,processors)
+        # compute_cost = get_computation_cost(assignment_matrix, workload_matrix)
+        # communicate_cost = get_communication_cost(assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors)
+        # total_cost += compute_cost
+        # total_cost += communicate_cost * intervals
 
-    def objective(assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors):
-        # computation only
-        total_cost = 0
-        assignment_matrix = assignment_matrix.reshape(-1,processors)
-        compute_cost = get_computation_cost(assignment_matrix, workload_matrix)
-        communicate_cost = get_communication_cost(assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors)
-        total_cost += compute_cost
-        total_cost += communicate_cost * intervals
         # print("communication_time: ",communicate_cost)
         # print("total cost: ",total_cost)
-        return total_cost
+        return total_cost 
 
     # A task can only be partially assigned to one processor
     def linear_constraint(assignment_matrix):
@@ -80,26 +91,40 @@ def lp_compute_commute(matrix: np.ndarray, send_cost: int, receive_cost: int, wi
         return row_sums - 1
 
     # partial assignment of a task to a processor must be non-negative
-    def nonnegativity_constraint(x):
-        matrix = x.reshape((samples, processors))
+    def nonnegativity_constraint(assignment_matrix):
+        matrix = assignment_matrix.reshape((samples, processors))
         return matrix.flatten()
+
+    def computation_cost_constraint(computation_cost_array, workload_matrix, assignment_matrix):
+        constant_array = np.array(workload_matrix).T @ assignment_matrix
+        print(constant_array.shape)
+        differences = computation_cost_array.reshape((-1,processors)) - constant_array
+        return differences.flatten()
     
+    def communication_cost_constraint(communication_cost, assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors):
+        constant_array = get_communication_cost(assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors)
+        return communication_cost - constant_array.flatten()
+
     # intialize assignment_matrix
     # matrix = np.zeros((samples,processors))
     # for i in range(samples):
     #     matrix[i][np.random.randint(0, processors)] =  1
     # print("matrix: ",matrix)
-    constraint = ({'type': 'eq', 'fun': linear_constraint}, {'type': 'ineq', 'fun': nonnegativity_constraint})
+    compute_cost_array = np.ones((1,intervals))
+    communication_cost = 9
+    constraint = ({'type': 'eq', 'fun': linear_constraint}, {'type': 'ineq', 'fun': nonnegativity_constraint}, {'type': 'ineq', 'fun': lambda x: computation_cost_constraint(x, workload_matrix, assignment_matrix)}, {'type': 'ineq', 'fun': lambda x: communication_cost_constraint(x, communication_time)})
     tolerance = 0.00001
     max_iterations = 100
+    print("hi1")
     options = {'maxiter': max_iterations}
-    result = minimize(objective, matrix,options = options, args = (send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), constraints = constraint, tol = tolerance)
+    communicate_cost = get_communication_cost(assignment_matrix, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors)
+    result = minimize(objective, assignment_matrix, args = (intervals, compute_cost_array, communication_cost, send_cost, receive_cost, width, height, workload_matrix, samples, intervals, processors), options = options, constraints = constraint, tol = tolerance)
+    print("hi")
     # print("result: \n",result)
     return (result.x.reshape(-1,processors)).tolist()
 
 # convert lp assignment to assignment by max
 def lp_compute_commute_max(solution: list, samples: int, processors: int) -> list:
-    # construct assignment
     result = []
     for i in range(samples):
         assignment = 0
