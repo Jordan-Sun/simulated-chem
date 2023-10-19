@@ -130,8 +130,6 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
     if not os.path.exists(outdir):
         os.mkdir(outdir)
     # the name of the file to write the assignments to
-    if tuning_constant != 1:
-        file_name = os.path.join(outdir, '{}.assignment'.format(tuning_constant))
     if extra >= 0:
         file_name = os.path.join(outdir, '{}_{}.assignment'.format(function, extra))
     else:
@@ -140,7 +138,7 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
         file_name = file_name.replace('.assignment', '_send{}.assignment'.format(send_cost))
     if receive_cost != 1 and function != 'greedy':
         file_name = file_name.replace('.assignment', '_recv{}.assignment'.format(receive_cost))
-    if function =='greedy_prioritize_communication':
+    if tuning_constant != 1 and function != 'greedy':
         file_name = file_name.replace('.assignment', '_tuning{}.assignment'.format(tuning_constant))
     if coarse != False:
         file_name = file_name.replace('.assignment', '_coarse{}.assignment'.format(coarse))
@@ -194,7 +192,7 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
     elif function == 'greedy_prioritize_communication':
         assignments = complex_assignment.greedy_prioritize_communication(workload, width, height, t, p, extra, send_cost, receive_cost, tuning_constant)
     elif function == 'mosaic_greedy':
-        assignment = complex_assignment.mosaic_greedy(workload, width, height, t, p, extra, tuning_constant)
+        assignments = complex_assignment.mosaic_greedy(workload, width, height, t, p, extra, tuning_constant)
     else:
         print('Invalid assignment function')
         return -6
@@ -572,12 +570,14 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
             output_name = output_name.replace('.result', '_send{}.result'.format(sendCost))
         if recvCost != 1:
             output_name = output_name.replace('.result', '_recv{}.result'.format(recvCost))
-        if function =='greedy_prioritize_communication':
+        if tuning_constant != 1:
             output_name = output_name.replace('.result', '_tuning{}.result'.format(tuning_constant))
             assignment_name = assignment_name.replace('.assignment', '_tuning{}.assignment'.format(tuning_constant))
         if coarse != 0:
             output_name = output_name.replace('.result', '_coarse{}.result'.format(coarse))
             assignment_name = assignment_name.replace('.assignment', '_coarse{}.assignment'.format(coarse))
+            sendCost = sendCost * coarse
+            recvCost = recvCost * coarse 
         if not os.path.exists(assignment_name):
             print(assignment_name)
             print('Assignment file does not exist')
@@ -597,7 +597,7 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
             return -7
         # simulate the workload
         try:
-            computation, broadcast, unicast, computationBroadcast, computationUnicast = simulation.simulate(workload, assignments, width, height, t, p, sendCost * 2, recvCost * 2)
+            computation, broadcast, unicast, computationBroadcast, computationUnicast = simulation.simulate(workload, assignments, width, height, t, p, sendCost, recvCost)
         except ValueError as e:
             print(e)
             return -7

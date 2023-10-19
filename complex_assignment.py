@@ -424,6 +424,9 @@ def mosaic_greedy(matrix: list, width: int, height: int, intervals: int, process
         random.seed(extra)
         random.shuffle(samples_list)
 
+    # count of each block size
+    block_sizes = {}
+
     # loop through all the samples
     for sample in samples_list:
         # check if the sample has been previously assigned to a processor in pervious iterations
@@ -431,7 +434,7 @@ def mosaic_greedy(matrix: list, width: int, height: int, intervals: int, process
             continue
 
         # debug print
-        print('Processing sample {}'.format(sample))
+        # print('Processing sample {}'.format(sample))
         
         # greedily choose the initial processor
         # the block size that can be greedily packed to a processor
@@ -476,10 +479,6 @@ def mosaic_greedy(matrix: list, width: int, height: int, intervals: int, process
                     for k in range(intervals):
                         block_costs[k] += matrix[whtoi(i, j, width, height)][k]
 
-            # debug print
-            print('Trying size {} block'.format(tentative_block_size))
-            print('Block samples: {}'.format(block_samples))
-
             # compute the new cost of assigning the block to each processor
             min_cost = float('inf')
             min_processor = -1
@@ -513,10 +512,6 @@ def mosaic_greedy(matrix: list, width: int, height: int, intervals: int, process
             # if the block cannot be assigned to a processor without exceeding the threshold
             else:
                 break    
-    
-        # debug print
-        print('Assigning size {} block to processor {}'.format(tentative_block_size, tentative_block_processor))
-        print('Block samples: {}'.format(tentative_block_samples))
 
         # assign the tentative block to the tentative processor
         for sample in tentative_block_samples:
@@ -526,5 +521,16 @@ def mosaic_greedy(matrix: list, width: int, height: int, intervals: int, process
             for sample in tentative_block_samples:
                 processor_costs[tentative_block_processor][i] += matrix[sample][i]
             last_costs[i] = max(last_costs[i], processor_costs[tentative_block_processor][i])
+
+        # update the block size count
+        if tentative_block_size in block_sizes:
+            block_sizes[tentative_block_size] += 1
+        else:
+            block_sizes[tentative_block_size] = 1
+    
+    # print the block size count statistics
+    # print('Block Size Count:')
+    # for block_size in block_sizes:
+    #     print('{}: {}'.format(block_size, block_sizes[block_size]))
 
     return assignments
