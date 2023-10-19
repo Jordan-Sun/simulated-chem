@@ -9,7 +9,7 @@ import random
 import copy
 import numpy as np
 from typing import List, Tuple
-
+    
 # Convert a 2d index to a 1d index with wrapping
 def whtoi(x: int, y: int, width: int, height: int) -> int:
     if x < 0:
@@ -320,7 +320,8 @@ def greedy_with_communication(matrix: list, width: int, height: int, intervals: 
     
     return assignments
 
-def greedy_prioritize_communication(matrix: list, width: int, height: int, intervals: int, processors: int, extra: int, send_cost: float, recv_cost: float) -> List[int]:
+def greedy_prioritize_communication(matrix: list, width: int, height: int, intervals: int, processors: int, extra: int, send_cost: float, recv_cost: float, constant: int) -> List[int]:
+    # print("Here is matrix: \n", matrix)
     samples = height * width
     assignment = [-1] * samples
     processor_workload_array = np.zeros(processors * intervals).reshape(processors, intervals)
@@ -333,8 +334,8 @@ def greedy_prioritize_communication(matrix: list, width: int, height: int, inter
     # print("samples=",samples)
     num_rows = len(matrix)
     num_cols = len(matrix[0]) if matrix else 0
-    constant = 0.5
     computation_overload_threshold = constant * np.sum(workload_array, axis=0).reshape(-1, 1)/processors
+    # print("computation_overload_threshold\n", computation_overload_threshold)
     samples_list = list(range(samples))
     if extra != -1:
         random.seed(extra)
@@ -392,7 +393,138 @@ def greedy_prioritize_communication(matrix: list, width: int, height: int, inter
         # print("processor_workload_array\n",processor_workload_array)
         processor_workload_array[min_processor] += workload_array[sample]
     # print("processor_workload_array",processor_workload_array)
-    # print("computation_overload_threshold\n", computation_overload_threshold)
-    # print("greedy choice percentage: ",random_choice/samples)
+    print("computation_overload_threshold\n", computation_overload_threshold)
+    print("greedy choice percentage: ",random_choice/samples)
     # print("Number of greedy assignment: ",random_choice)
     return assignment
+
+# Start by greedily assigning the sample to a processor.
+# Repeatedly try to pack the block one larger that can be greedily packed to a processor under the threshold.
+# Assign it to largest processor that can fit it.
+def mosaic_greedy(matrix: list, width: int, height: int, intervals: int, processors: int, extra: int, constant: int) -> List[int]:
+    # the total number of samples is width times height
+    samples = width * height
+    # the list of assignments, -1 means unassigned
+    assignments = [-1] * samples
+    # the list of costs of processors
+    processor_costs = []
+    for _ in range(processors):
+        processor_costs.append([0] * intervals)
+    # the max costs at each interval as of last iteration
+    last_costs = [0] * intervals
+
+    # compute the threshold for each interval
+    threshold = [0] * intervals
+    for i in range(intervals):
+        threshold[i] = constant * sum(matrix[sample][i] for sample in range(samples)) / processors
+
+    # shuffle the processor if extra is not -1
+    samples_list = list(range(samples))
+    if extra != -1:
+        random.seed(extra)
+        random.shuffle(samples_list)
+
+    # loop through all the samples
+    for sample in samples_list:
+        # check if the sample has been previously assigned to a processor in pervious iterations
+        if assignments[sample] != -1:
+            continue
+
+        # debug print
+        print('Processing sample {}'.format(sample))
+        
+        # greedily choose the initial processor
+        # the block size that can be greedily packed to a processor
+        tentative_block_size = 1
+        # the samples in the block
+        tentative_block_samples = [sample]
+        # compute the new cost of assigning the sample to each processor
+        costs = [0] * processors
+        for processor in range(processors):
+            for i in range(intervals):
+                # the new cost of this processor at this interval
+                cost = processor_costs[processor][i] + matrix[sample][i]
+                # the cost of this interval is the max of the last cost and the new cost
+                costs[processor] += max(last_costs[i], cost)
+        # assign to the leftmost processor with the lowest cost
+        tentative_block_processor = costs.index(min(costs))
+        
+        # the coordinates of the sample
+        x, y = itowh(sample, width, height)
+        # greedily pack larger block to the processor until it reaches the threshold
+        while True:
+            # the new block size
+            block_size = tentative_block_size + 1
+            # unasigned samples in the block
+            block_samples = []
+            # cost of the block at each interval
+            block_costs = [0] * intervals
+            for j in range(y, y + block_size):
+                # check if the height is out of bound
+                if j >= height:
+                    break
+                for i in range(x, x + block_size):
+                    # check if the width is out of bound
+                    if i >= width:
+                        break
+                    # skip if the sample is already assigned
+                    if assignments[whtoi(i, j, width, height)] != -1:
+                        continue
+                    # add the sample to the block
+                    block_samples.append(whtoi(i, j, width, height))
+                    # add the cost of the sample to the block cost
+                    for k in range(intervals):
+                        block_costs[k] += matrix[whtoi(i, j, width, height)][k]
+
+            # debug print
+            print('Trying size {} block'.format(tentative_block_size))
+            print('Block samples: {}'.format(block_samples))
+
+            # compute the new cost of assigning the block to each processor
+            min_cost = float('inf')
+            min_processor = -1
+            for processor in range(processors):
+                valid = True
+                cost = 0
+                interval_costs = [0] * intervals
+                for i in range(intervals):
+                    # the new cost of this processor at this interval
+                    interval_costs[i] = processor_costs[processor][i] + block_costs[i]
+                    # check if the cost at the interval is over the threshold
+                    if interval_costs[i] > threshold[i]:
+                        # if the cost is over the threshold, the block is not valid
+                        valid = False
+                        break
+                    # the cost of this interval is the max of the last cost and the new cost
+                    cost += max(last_costs[i], interval_costs[i])
+                # if the block is valid
+                if valid:
+                    # if the cost is less than the current min cost, update the min cos, min interval costs, and min processor
+                    if cost < min_cost:
+                        min_cost = cost
+                        min_processor = processor
+            
+            # if min processor is not -1, the block can be assigned to a processor without exceeding the threshold
+            if min_processor != -1:
+                # update the tentative assignments
+                tentative_block_size = block_size
+                tentative_block_samples = block_samples
+                tentative_block_processor = min_processor
+            # if the block cannot be assigned to a processor without exceeding the threshold
+            else:
+                break    
+    
+        # debug print
+        print('Assigning size {} block to processor {}'.format(tentative_block_size, tentative_block_processor))
+        print('Block samples: {}'.format(tentative_block_samples))
+
+        # assign the tentative block to the tentative processor
+        for sample in tentative_block_samples:
+            assignments[sample] = tentative_block_processor
+        # update the processor costs and last costs
+        for i in range(intervals):
+            for sample in tentative_block_samples:
+                processor_costs[tentative_block_processor][i] += matrix[sample][i]
+            last_costs[i] = max(last_costs[i], processor_costs[tentative_block_processor][i])
+
+    return assignments

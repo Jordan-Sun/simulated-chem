@@ -65,9 +65,9 @@ def run_greedy_with_communication(processors, intervals, width, height, workload
     print_assignment(assignment_matrix, width, height)
     return assignment_matrix
 
-def run_greedy_prioritize_communication(processors, intervals, width, height, workload_matrix, send_cost, receive_cost):
+def run_greedy_prioritize_communication(processors, intervals, width, height, workload_matrix, send_cost, receive_cost, tuning_constant, coarse):
     extra = -1
-    assignment_matrix = complex_assignment.greedy_prioritize_communication(workload_matrix, width, height, intervals, processors, extra, send_cost, receive_cost)
+    assignment_matrix = complex_assignment.greedy_prioritize_communication(workload_matrix, width, height, intervals, processors, extra, send_cost, receive_cost, tuning_constant)
     print(assignment_matrix)
     print_assignment(assignment_matrix, width, height)
     return assignment_matrix
@@ -89,12 +89,18 @@ def get_theoretical_lower_bound(width, height, input_matrix, denominator):
     return value
 
 def main():
-    if len(sys.argv) < 3:
-        print('Usage: python3 test_naive_greedy.py [processors] [which_greedy]')
+    if len(sys.argv) < 4:
+        print('Usage: python3 test_naive_greedy.py [processors] [which_greedy] [tuning_constant] [coarse]')
         return -1
     # initialization to default value
     processors = int(sys.argv[1])
+    print("processors: ",processors)
     greedy_type = int(sys.argv[2])
+    print("greedy_type: ", greedy_type)
+    tuning_constant = float(sys.argv[3])
+    print("tunning_constant: ",tuning_constant)
+    coarse = int(sys.argv[4])
+    print("coarse: ", coarse)
     width = 1
     height = 1
     intervals = 1
@@ -120,7 +126,7 @@ def main():
     if greedy_type == 2: 
         assignment_matrix = run_naive_greedy(processors, intervals, width, height, workload_matrix, send_cost, receive_cost)
     elif greedy_type == 3: 
-        assignment_matrix = run_greedy_prioritize_communication(processors, intervals, width, height, workload_matrix, send_cost, receive_cost)
+        assignment_matrix = run_greedy_prioritize_communication(processors, intervals, width, height, workload_matrix, send_cost, receive_cost, tuning_constant, coarse)
     elif greedy_type == 4: 
         # run greedy_with_communication 
         function_list = ['greedy_dependent_unicast', 'greedy_independent_unicast', 'greedy_dependent_broadcast', 'greedy_independent_broadcast']
@@ -129,7 +135,7 @@ def main():
     # get computation time across intervals 
     max_compute_time = get_computation_time_interval(workload_matrix, assignment_matrix, width, height, intervals, processors)
     # simulate computation and communication 
-    totalComputation, totalBroadcast, totalUnicast, totalComputationBroadcast, totalComputationUnicast = simulation.simulate(workload_matrix, assignment_matrix, width, height, intervals, processors, send_cost, receive_cost)
+    totalComputation, totalBroadcast, totalUnicast, totalComputationBroadcast, totalComputationUnicast = simulation.simulate(workload_matrix, assignment_matrix, width, height, intervals, processors, send_cost*2, receive_cost*2)
     # calculate theoretical lower bound given the workload 
     theoretical_lower_bound = get_theoretical_lower_bound(intervals, samples, workload_matrix, processors)
     print("Final total Computation: ",totalComputation)
