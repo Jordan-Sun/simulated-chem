@@ -1,0 +1,23 @@
+Solving...
+task_name:  complicated
+function name:  mosaic_greedy
+extra:  -1
+send cost:  1
+tuning_constant :  1.0
+coarse :  0
+index :  1
+Entering directory: feather
+width:  180
+height:  270
+interval:  432
+Skipping assignment function at feather/p_54/mosaic_greedy.assignment
+Simulating...
+task_name:  simulate
+function name:  mosaic_greedy
+extra:  -1
+send cost:  10
+tuning_constant :  1.0
+coarse :  0
+index :  1
+Entering directory: feather
+Running simulation function at feather/p_54/mosaic_greedy_send10_recv10.result

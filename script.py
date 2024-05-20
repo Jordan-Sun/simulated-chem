@@ -15,6 +15,7 @@ import pandas as pd
 from typing import Tuple
 import complex_assignment
 import numpy as np
+import math
 
 procs = [16, 128, 1024]
 xs = [20, 50, 100, 200]
@@ -22,50 +23,50 @@ ts = [20, 50, 100, 200]
 rs = [2, 5, 10, 20]
 num_trials = 20
 
-def reshape_to_3d(matrix_2d, width, height, interval):
-    matrix_3d = [[[0]*interval for _ in range(width)] for _ in range(height)]
-    for i in range(height):
-        for j in range(width):
-            matrix_3d[i][j] = matrix_2d[i * width + j]
-    return matrix_3d
+def itowh(i: int, width: int, height: int) -> Tuple[int, int]:
+    if i < 0 or i >= width * height:
+        raise ValueError('i out of bounds')
+    return i % width, int(i / width)
+
+def whtoi(x: int, y: int, width: int, height: int) -> int:
+    if x < 0:
+        x += width
+    if x >= width:
+        x -= width
+    if y < 0:
+        y += height
+    if y >= height:
+        y -= height
+    return y * width + x
 
 def reshape_to_2d(matrix_3d):
     height, width, interval = len(matrix_3d), len(matrix_3d[0]), len(matrix_3d[0][0])
     matrix_2d = [matrix_3d[i//width][i%width] for i in range(height*width)]
     return matrix_2d
 
-def coarsen(matrix_2d, width, height, interval):
-    # Convert 2D matrix to 3D
-    matrix_3d = reshape_to_3d(matrix_2d, width, height, interval)
-    
+def coarsen(matrix_2d, width, height, interval,coarse_constant):
     # Calculate the coarsened dimensions
-    coarse_width = (width + 1) // 2
-    coarse_height = (height + 1) // 2
-    
-    # Initialize the coarsened matrix with zeros
-    coarse_matrix_3d = [[[0]*interval for _ in range(coarse_width)] for _ in range(coarse_height)]
-    
-    # Coarsen the matrix
-    for i in range(0, height, 2):
-        for j in range(0, width, 2):
-            # Define blocks for summing
-            blocks = [(i, j)]
-            
-            if i + 1 < height:
-                blocks.append((i + 1, j))
-            if j + 1 < width:
-                blocks.append((i, j + 1))
-            if i + 1 < height and j + 1 < width:
-                blocks.append((i + 1, j + 1))
-            
-            for x, y in blocks:
-                for k in range(interval):
-                    coarse_matrix_3d[i // 2][j // 2][k] += matrix_3d[x][y][k]
-                    
-    # Convert coarsened 3D matrix back to 2D
-    coarse_matrix_2d = reshape_to_2d(coarse_matrix_3d)
+    coarse_width = math.ceil(width/coarse_constant)
+    coarse_height = math.ceil(height/coarse_constant)
+    coarse_matrix = [[[0]*interval for _ in range(coarse_height)] for _ in range(coarse_width)]
+    new_dictionary = {}
+    for i in range(coarse_width):
+        for j in range(coarse_height):
+            tuple_key = (i,j)
+            index = whtoi(i, j, coarse_width, coarse_height)
+            new_dictionary[index] = []
 
-    return coarse_matrix_2d
+    for y in range(height):
+        j = math.floor(y/coarse_constant)
+        for x in range(width):
+            i = math.floor(x/coarse_constant)
+            tuple_value = whtoi(x, y, width, height)
+            new_dictionary[whtoi(i, j, coarse_width, coarse_height)].append(tuple_value)
+            for k in range(interval):
+                coarse_matrix[i][j][k] += matrix_2d[whtoi(x, y, width, height)][k]
+    # Convert coarsened 3D matrix back to 2D
+    coarse_matrix_2d = reshape_to_2d(coarse_matrix)
+    return coarse_matrix_2d, coarse_width, coarse_height, new_dictionary
 
 # converts the job index to the parameters
 # the parameters are xlp_co, y, t, r, p, trial
@@ -121,10 +122,11 @@ def simple(function: str, workdir: str, width: int, height: int, p: int, extra: 
     return 0
 
 # executes a complicated assignment function and write the results to a file
-def complicated(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int = -1, send_cost: int = 1, receive_cost: int = 1, tuning_constant = 1, coarse: int = 0):
+def complicated(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int = -1, send_cost: int = 1, receive_cost: int = 1, tuning_constant = 1, coarse: int = 0, fine_tune: bool = 0):
     print("width: ",width)
     print("height: ",height)
     print("interval: ",t)
+    print("fine_tune: ",fine_tune)
     # the directory to write the results to
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     if not os.path.exists(outdir):
@@ -140,8 +142,11 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
         file_name = file_name.replace('.assignment', '_recv{}.assignment'.format(receive_cost))
     if tuning_constant != 1 and function != 'greedy':
         file_name = file_name.replace('.assignment', '_tuning{}.assignment'.format(tuning_constant))
-    if coarse != False:
+    if coarse != 0:
         file_name = file_name.replace('.assignment', '_coarse{}.assignment'.format(coarse))
+    if fine_tune != False:
+        file_name = file_name.replace('.assignment', '_finetune{}.assignment'.format(fine_tune))
+    print(file_name)
     # if the file already exists, do not run the assignment function
     if os.path.exists(file_name):
         print('Skipping assignment function at {}'.format(file_name))
@@ -159,21 +164,19 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
         if len(workload) != samples:
             print('Workload file has invalid number of samples')
             return -5
-        if coarse != 0:
-            print("original workload file dimension: ")
-            print("samples: ",len(workload))
-            print("interval: ", len(workload[0]))
-            print("original workload: \n", workload)
-            workload = coarsen(workload, width, height, t)
-            print("new workload file dimension: ")
-            print("original workload file dimension: ")
-            print("samples: ",len(workload))
-            print("interval: ", len(workload[0]))
-            print("coarsed workload: \n", workload)
-            width = (width + 1) // 2
-            height = (height + 1) // 2
-            send_cost *= 2
-            receive_cost *= 2   
+        if coarse != 0 and function != 'mosaic_greedy':
+            # print("original workload file dimension: ")
+            # print("samples: ",len(workload))
+            # print("interval: ", len(workload[0]))
+            # print("original workload: \n", workload)
+            workload, width, height, new_dictionary = coarsen(workload, width, height, t, coarse)
+            # print("new workload file dimension: ")
+            # print("original workload file dimension: ")
+            # print("samples: ",len(workload))
+            # print("interval: ", len(workload[0]))
+            # print("coarsed workload: \n", workload)
+            send_cost *= coarse
+            receive_cost *= coarse 
 
     # the assignment function
     assignments = None
@@ -191,8 +194,12 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
         assignments = complex_assignment.greedy_with_communication(workload, width, height, t, p, extra, send_cost, receive_cost, complex_assignment.weak_neighbor_dependent_unicast_cost_function)
     elif function == 'greedy_prioritize_communication':
         assignments = complex_assignment.greedy_prioritize_communication(workload, width, height, t, p, extra, send_cost, receive_cost, tuning_constant)
+    elif function == 'greedy_prioritize_communication_fine_tune':
+        assignments = complex_assignment.greedy_prioritize_communication_fine_tune(workload, width, height, t, p, extra, send_cost, receive_cost, tuning_constant, coarse, fine_tune)
     elif function == 'mosaic_greedy':
-        assignments = complex_assignment.mosaic_greedy(workload, width, height, t, p, extra, tuning_constant)
+        assignments = complex_assignment.mosaic_greedy(workload, width, height, t, p, extra, tuning_constant, coarse)
+    elif function == 'blocked_greedy':
+        assignments = complex_assignment.blocked_greedy(workload, width, height, t, p, extra, tuning_constant, coarse)
     else:
         print('Invalid assignment function')
         return -6
@@ -505,7 +512,7 @@ def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int
     return 0
 
 # executes a simulation function and write the results to a file
-def simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int, tuning_constant = 1, coarse: int = 0):
+def simulate(function: str, workdir: str, width: int, height: int, t: int, p: int, extra: int, sendCost: int, recvCost: int, tuning_constant = 1, coarse: int = 0, fine_tune: bool = False):
     # the directory to write the results to
     outdir = os.path.join(workdir, 'p_{}'.format(p))
     if not os.path.exists(outdir):
@@ -521,18 +528,16 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
     if len(workload) != samples:
         print('Workload file has invalid number of samples')
         return -5
-    if coarse != 0:
-        print("original workload file dimension: ")
-        print("samples: ",len(workload))
-        print("interval: ", len(workload[0]))
-        workload = coarsen(workload, width, height, t)
-        print("new workload file dimension: ")
-        print("original workload file dimension: ")
-        print("samples: ",len(workload))
-        print("interval: ", len(workload[0]))
-        width = (width + 1) // 2
-        height = (height + 1) // 2
+    if coarse != 0 and function != 'mosaic_greedy': #TODO: Is this correct?
+        # print("original workload file dimension: ")
+        # print("samples: ",len(workload))
+        # print("interval: ", len(workload[0]))
+        workload, width, height, new_dictionary = coarsen(workload, width, height, t, coarse)
+        # print("new workload file dimension: ")
+        # print("samples: ",len(workload))
+        # print("interval: ", len(workload[0]))
         samples = width * height
+        
     if function == 'bound':
         # the name of the file to write the assignments to
         file_name = os.path.join(outdir, 'bound.result')
@@ -560,7 +565,8 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
         else:
             assignment_name = os.path.join(outdir, '{}.assignment'.format(function))
             output_name = os.path.join(outdir, '{}.result'.format(function))
-        communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast', 'lp_compute_commute_max', 'lp_compute_commute_random', 'greedy_prioritize_communication']
+        communication_aware_functions = ['greedy_independent_broadcast', 'greedy_dependent_broadcast', 'greedy_independent_unicast', 'greedy_dependent_unicast', 'greedy_weak_neighbor_dependent_unicast', 'lp_compute_commute_max', 'lp_compute_commute_random', 'greedy_prioritize_communication', 'greedy_prioritize_communication_fine_tune']
+        
         if function in communication_aware_functions:
             if sendCost != 1:
                 assignment_name = assignment_name.replace('.assignment', '_send{}.assignment'.format(sendCost))
@@ -576,8 +582,10 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
         if coarse != 0:
             output_name = output_name.replace('.result', '_coarse{}.result'.format(coarse))
             assignment_name = assignment_name.replace('.assignment', '_coarse{}.assignment'.format(coarse))
-            sendCost = sendCost * coarse
-            recvCost = recvCost * coarse 
+        if fine_tune != False:
+            output_name = output_name.replace('.result', '_finetune{}.result'.format(fine_tune))
+            assignment_name = assignment_name.replace('.assignment', '_finetune{}.assignment'.format(fine_tune))
+        print("assignment_name: ", assignment_name)
         if not os.path.exists(assignment_name):
             print(assignment_name)
             print('Assignment file does not exist')
@@ -596,6 +604,9 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
             print('Assignment file has invalid number of samples')
             return -7
         # simulate the workload
+        if coarse != 0 and function != 'mosaic_greedy': #TODO: Is this line correct?
+            sendCost = sendCost * coarse
+            recvCost = recvCost * coarse 
         try:
             computation, broadcast, unicast, computationBroadcast, computationUnicast = simulation.simulate(workload, assignments, width, height, t, p, sendCost, recvCost)
         except ValueError as e:
@@ -606,8 +617,8 @@ def simulate(function: str, workdir: str, width: int, height: int, t: int, p: in
             file.write('Computation, {}\n'.format(computation))
             file.write('Broadcast, {}\n'.format(broadcast))
             file.write('Unicast, {}\n'.format(unicast))
-            file.write('ComputationBroadcast, {}\n'.format(computationBroadcast))
-            file.write('ComputationUnicast, {}\n'.format(computationUnicast))
+            # file.write('ComputationBroadcast, {}\n'.format(computationBroadcast))
+            # file.write('ComputationUnicast, {}\n'.format(computationUnicast))
     return 0
 
 # executes the alternative simulation function and write the results to a file
@@ -719,6 +730,12 @@ def main():
     else:
         coarse = 0
     print("coarse : ",coarse)
+    print("len(sys.argv): ",len(sys.argv))
+    if len(sys.argv) > 9:
+        fine_tune = True
+    else:
+        fine_tune = False
+    print("fine_tune is: ",fine_tune)
     if index < 1:
         print('Invalid job index')
         return -2
@@ -760,13 +777,13 @@ def main():
     if task_name == 'simple':
         return simple(function_name, workdir, x, y, p, extra)
     elif task_name == 'complicated':
-        return complicated(function_name, workdir, x, y, t, p, extra, sendCost, recvCost, tuning_constant, coarse)
+        return complicated(function_name, workdir, x, y, t, p, extra, sendCost, recvCost, tuning_constant, coarse, fine_tune)
     elif task_name == 'lp':
         return lp(function_name, workdir, x, y, t, p, extra)
     elif task_name == 'qlp':
         return qlp(function_name, workdir, x, y, t, p, extra)
     elif task_name == 'simulate':
-        return simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost, tuning_constant, coarse)
+        return simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost, tuning_constant, coarse, fine_tune)
     elif task_name == 'alt_simulate':
         return alt_simulate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
     elif task_name == 'lp_compute_commute':

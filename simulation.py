@@ -109,8 +109,11 @@ def alt_simulate(matrix: list, assignment: list, width: int, height: int, interv
     totalUnicast = 0
 
     # Constant variables (update these to be inputs later)
-    numNeighbors = 4
-    factor = 0.1
+    neighbor_offsets = []
+    for x in range(-1, 2):
+        for y in range(-1, 2):
+            if x != 0 or y != 0:
+                neighbor_offsets.append((x, y))
 
     # Process each interval
     for interval in range(intervals):
@@ -123,21 +126,14 @@ def alt_simulate(matrix: list, assignment: list, width: int, height: int, interv
                 sample = whtoi(x, y, width, height)
                 # Find the number of neighbors with a different assignment
                 different = 0
-                # Check top
-                if assignment[sample] != assignment[whtoi(x, y - 1, width, height)]:
-                    different += 1
-                # Check bottom
-                if assignment[sample] != assignment[whtoi(x, y + 1, width, height)]:
-                    different += 1
-                # Check left
-                if assignment[sample] != assignment[whtoi(x - 1, y, width, height)]:
-                    different += 1
-                # Check right
-                if assignment[sample] != assignment[whtoi(x + 1, y, width, height)]:
-                    different += 1
+                # Check neighbors
+                for offset in neighbor_offsets:
+                    neighbor = whtoi(x + offset[0], y + offset[1], width, height)
+                    if assignment[sample] != assignment[neighbor]:
+                        different += 1
                 # Add the work to the total for the processor
                 intervalComputations[assignment[sample]] += matrix[sample][interval]
-                intervalUnicasts[assignment[sample]] += (sendCost + recvCost) * (different + factor * (numNeighbors - different))
+                intervalUnicasts[assignment[sample]] += (sendCost + recvCost) * different
         # Add the maximum work to the total.
         totalComputation += max(intervalComputations)
         totalUnicast += max(intervalUnicasts)
