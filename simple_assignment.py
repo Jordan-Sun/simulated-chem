@@ -116,14 +116,28 @@ def proximity_matrix(width: int, height: int, p: int) -> List[int]:
     return assignments
 
 # assigns the samples using a simple random assignment
-def simple_random(width: int, height: int, p: int) -> List[int]:
+def simple_random(width: int, height: int, p: int, ncell_max: List[int] = None) -> List[int]:
     # the total number of samples is width times height
     n = width * height
     # the list of assignments
     assignments = [0] * n
+
+    # the pool of available processors
+    pool = list(range(p))
+    # validate ncell_max if provided
+    if ncell_max is not None:
+        if len(ncell_max) != p:
+            raise RuntimeError('The length of ncell_max must be equal to the number of processors, but got {} for {} processors'.format(len(ncell_max), p))
+    
     # assign each sample to a random processor
     for i in range(n):
-        assignments[i] = random.randint(0, p - 1)
+        # randomly assign a processor from the pool of available processors
+        assignments[i] = random.choice(pool)
+        # remove the processor from the pool if it reaches the maximum number of samples
+        if ncell_max is not None:
+            ncell_max[assignments[i]] -= 1
+            if ncell_max[assignments[i]] == 0:
+                pool.remove(assignments[i])
     return assignments
 
 # assigns the samples that tries to balance the number of samples per processor
