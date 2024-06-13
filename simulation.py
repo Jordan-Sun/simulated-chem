@@ -94,7 +94,6 @@ def simulate(matrix: list, assignment: list, width: int, height: int, intervals:
         totalComputationUnicast += max(intervalComputationUnicasts)
     return totalComputation, totalBroadcast, totalUnicast, totalComputationBroadcast, totalComputationUnicast
 
-
 # Simulate the computation and communication cost of an assignment on a matrix with alternative communcation calculation
 def alt_simulate(matrix: list, assignment: list, width: int, height: int, intervals: int, processors: int, sendCost: int, recvCost: int) -> Tuple[int, int]:
     # Validate the input
