@@ -115,10 +115,10 @@ def simple(function: str, workdir: str, width: int, height: int, p: int, extra: 
     else:
         print('Invalid assignment function')
         return -6
-    # write the assignments to a file
-    with open(file_name, 'w') as file:
-        for y in range(height):
-            file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
+    # write the assignments to a file as csv
+    array = np.array(assignments).reshape((width,height))
+    df = pd.DataFrame(array)
+    df.to_csv(file_name, header=False, index=False)
     return 0
 
 # executes a complicated assignment function and write the results to a file
@@ -203,10 +203,10 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
     else:
         print('Invalid assignment function')
         return -6
-    # write the assignments to a file
-    with open(file_name, 'w') as file:
-        for y in range(height):
-            file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
+    # write the assignments to a file as csv
+    array = np.array(assignments).reshape((width,height))
+    df = pd.DataFrame(array)
+    df.to_csv(file_name, header=False, index=False)
     return 0
 
 # executes a lp assignment function and write the results to a file
@@ -308,9 +308,9 @@ def lp(function: str, workdir: str, width: int, height: int, t: int, p: int, ext
             print('Invalid assignment function')
             return -6
         # write the assignments to a file
-        with open(file_name, 'w') as file:
-            for y in range(height):
-                file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
+        array = np.array(assignments).reshape((width,height))
+        df = pd.DataFrame(array)
+        df.to_csv(file_name, header=False, index=False)
     return 0
 
 # executes a qlp assignment function and write the results to a file
@@ -378,9 +378,9 @@ def qlp(function: str, workdir: str, width: int, height: int, t: int, p: int, ex
             print('Invalid assignment function')
             return -6
         # write the assignments to a file
-        with open(file_name, 'w') as file:
-            for y in range(height):
-                file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
+        array = np.array(assignments).reshape((width,height))
+        df = pd.DataFrame(array)
+        df.to_csv(file_name, header=False, index=False)
     return 0
 
 def genetic (function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
@@ -418,9 +418,9 @@ def genetic (function: str, workdir: str, sendCost: int, recvCost: int, width: i
     # the assignment function
     assignments = genetic_algorithm(workload, width, height, t, p, extra, sendCost, recvCost)
     # write the assignments to a file
-    with open(file_name, 'w') as file:
-        for y in range(height):
-            file.write(','.join([str(assignments[simple_assignment.cord_to_index(width, height, x, y)]) for x in range(width)]) + '\n')
+    array = np.array(assignments).reshape((width,height))
+    df = pd.DataFrame(array)
+    df.to_csv(file_name, header=False, index=False)
     return 0
 
 def lp_compute_commute(function: str, workdir: str, sendCost: int, recvCost: int, width: int, height: int, t: int, p: int, extra: int = -1):
@@ -763,11 +763,11 @@ def main():
     # workdir = os.path.join('output', 'x_{}'.format(x), 'y_{}'.format(y), 't_{}'.format(t), 'r_{}'.format(r), 'trial_{}'.format(trial))
     #####
 
-    x = 180
-    y = 270
-    t = 432
-    p = 54
-    workdir = os.path.relpath('feather')
+    x = 8496
+    y = 24
+    t = 145
+    p = 48
+    workdir = os.path.relpath('nc4')
 
     print('Entering directory: {}'.format(workdir))
     if not os.path.exists(workdir):

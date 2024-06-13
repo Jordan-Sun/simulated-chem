@@ -1,59 +1,56 @@
 #!/bin/bash
 if [[ -z $1 ]];
 then 
-    echo "usage: $0 <group>"
+    echo "usage: $0 <index>"
 else
-    for group in {0..3}
-    do
-        let index=$(($group*960 + $1))
-        echo "Simulating $index."
-        # python3 script.py simulate bound $index
-        python3 script.py simulate proximity_matrix $index -1 2 3
-        python3 script.py simulate simple_random $index 0 2 3
-        python3 script.py simulate simple_random $index 1 2 3
-        python3 script.py simulate simple_random $index 2 2 3
-        python3 script.py simulate simple_random $index 3 2 3
-        python3 script.py simulate simple_random $index 4 2 3
-        python3 script.py simulate simple_random $index 5 2 3
-        python3 script.py simulate simple_random $index 6 2 3
-        python3 script.py simulate simple_random $index 7 2 3
-        python3 script.py simulate simple_random $index 8 2 3
-        python3 script.py simulate simple_random $index 9 2 3
-        python3 script.py simulate lp_max $index -1 2 3
-        python3 script.py simulate lp_random $index 0 2 3
-        python3 script.py simulate lp_random $index 1 2 3
-        python3 script.py simulate lp_random $index 2 2 3
-        python3 script.py simulate lp_random $index 3 2 3
-        python3 script.py simulate lp_random $index 4 2 3
-        python3 script.py simulate lp_random $index 5 2 3
-        python3 script.py simulate lp_random $index 6 2 3
-        python3 script.py simulate lp_random $index 7 2 3
-        python3 script.py simulate lp_random $index 8 2 3
-        python3 script.py simulate lp_random $index 9 2 3
-        python3 script.py simulate greedy_independent_unicast $index -1 2 3
+    let index=$1
+    # Simulation that does not require assignments
+    # echo "Doing basic simulations"
+    # python3 script.py simulate bound $index &
+    # python3 script.py simulate original $index &
 
-        python3 script.py alt_simulate proximity_matrix $index -1 2 3
-        python3 script.py alt_simulate simple_random $index 0 2 3
-        python3 script.py alt_simulate simple_random $index 1 2 3
-        python3 script.py alt_simulate simple_random $index 2 2 3
-        python3 script.py alt_simulate simple_random $index 3 2 3
-        python3 script.py alt_simulate simple_random $index 4 2 3
-        python3 script.py alt_simulate simple_random $index 5 2 3
-        python3 script.py alt_simulate simple_random $index 6 2 3
-        python3 script.py alt_simulate simple_random $index 7 2 3
-        python3 script.py alt_simulate simple_random $index 8 2 3
-        python3 script.py alt_simulate simple_random $index 9 2 3
-        python3 script.py alt_simulate lp_max $index -1 2 3
-        python3 script.py alt_simulate lp_random $index 0 2 3
-        python3 script.py alt_simulate lp_random $index 1 2 3
-        python3 script.py alt_simulate lp_random $index 2 2 3
-        python3 script.py alt_simulate lp_random $index 3 2 3
-        python3 script.py alt_simulate lp_random $index 4 2 3
-        python3 script.py alt_simulate lp_random $index 5 2 3
-        python3 script.py alt_simulate lp_random $index 6 2 3
-        python3 script.py alt_simulate lp_random $index 7 2 3
-        python3 script.py alt_simulate lp_random $index 8 2 3
-        python3 script.py alt_simulate lp_random $index 9 2 3
-        python3 script.py alt_simulate greedy_independent_unicast $index -1 2 3
+    # Assignment loop
+    echo "Doing greedy assignments"
+    python3 script.py complicated greedy $index &
+    for coarse in {2..6}
+    do
+        # python3 script.py complicated greedy $index -1 1 1 1 $coarse &
+        python3 script.py complicated mosaic_greedy $index -1 1 1 1 $coarse &
     done
+
+    # Wait for all assignments to finish
+    wait
+
+    # Simulation loop
+    echo "Doing greedy simulations"
+    python3 script.py simulate greedy $index &
+    for coarse in {2..6}
+    do
+        python3 script.py simulate greedy $index -1 1 1 1 $coarse &
+        python3 script.py simulate mosaic_greedy $index -1 1 1 1 $coarse &
+    done
+
+    # Wait for all assignments to finish
+    wait
+
+    # Assignment loop
+    echo "Doing simple random assignments"
+    for offset in {0..9}
+    do
+        python3 script.py simple simple_random $index $offset 1 1 &
+    done
+
+    # Wait for all assignments to finish
+    wait
+
+    # Simulation loop
+    echo "Doing random assignment simulations"
+
+    for offset in {0..9}
+    do
+        python3 script.py simulate simple_random $index $offset 1 1 &
+    done
+
+    # Wait for all simulations to finish
+    wait
 fi

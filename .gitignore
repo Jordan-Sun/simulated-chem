@@ -1,6 +1,9 @@
-output/
+# Ignore any folder or csv files
+*/
+*.csv
+
+# Cache
 __pycache__/
 .vscode/
 *.swp
-processed.csv
-feather/
+.DS_Store
