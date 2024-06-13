@@ -729,10 +729,10 @@ def animate(function: str, workdir: str, width: int, height: int, t: int, p: int
         return -6
     # if the file already exists, do not run the simulation function
     if os.path.exists(output_name):
-        print('Skipping simulation function at {}'.format(output_name))
+        print('Skipping animation function at {}'.format(output_name))
         return 1
     else:
-        print('Running simulation function at {}'.format(output_name))
+        print('Running animation function at {}'.format(output_name))
     # read the assignments from the file
     assignments_matrix = pd.read_csv(assignment_name, header=None).values.tolist()
     # convert the matrix to a list
