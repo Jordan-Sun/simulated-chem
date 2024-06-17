@@ -829,7 +829,7 @@ def main():
     x = 8496
     y = 24
     t = 145
-    p = 48
+    p = 24
     workdir = os.path.relpath('nc4')
 
     print('Entering directory: {}'.format(workdir))
