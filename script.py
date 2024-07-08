@@ -183,6 +183,18 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
     assignments = None
     if function == 'greedy':
         assignments = complex_assignment.greedy(workload, width, height, t, p, extra)
+    elif function == 'reassign_greedy':
+        # Read the 2d assignment, flatten it, and pass it to the reassign_greedy function as a list
+        original_assignments = pd.read_csv(os.path.join(outdir, 'original.assignment'), header=None).values.flatten().tolist()
+        assignments = complex_assignment.reassign_greedy(workload, width, height, t, p, original_assignments, extra)
+    elif function == 'balance_greedy':
+        # Read the 2d assignment, flatten it, and pass it to the balance_greedy function as a list
+        original_assignments = pd.read_csv(os.path.join(outdir, 'original.assignment'), header=None).values.flatten().tolist()
+        assignments = complex_assignment.balance_greedy(workload, width, height, t, p, original_assignments, extra)
+    elif function == 'reshuffle_greedy':
+        # Read the 2d assignment, flatten it, and pass it to the balance_greedy function as a list
+        original_assignments = pd.read_csv(os.path.join(outdir, 'original.assignment'), header=None).values.flatten().tolist()
+        assignments = complex_assignment.reshuffle_greedy(workload, width, height, t, p, original_assignments, extra)
     elif function == 'greedy_independent_broadcast':
         assignments = complex_assignment.greedy_with_communication(workload, width, height, t, p, extra, send_cost, receive_cost, complex_assignment.independent_broadcast_cost_function)
     elif function == 'greedy_dependent_broadcast':

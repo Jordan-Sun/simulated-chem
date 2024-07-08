@@ -122,6 +122,269 @@ def greedy(matrix: list, width: int, height: int, intervals: int, processors: in
 
     return assignments
 
+# Takes reassignment cost into account
+def reassign_greedy(matrix: list, width: int, height: int, intervals: int, processors: int, original_assignment: list, reassignment_cost: float) -> List[int]:
+    # the total number of samples is width times height
+    samples = width * height
+    # the list of costs of processors
+    processor_costs = []
+    for _ in range(processors):
+        processor_costs.append([0] * intervals)
+    # the list of reassignment on each processor
+    reassignments = []
+    for _ in range(processors):
+        reassignments.append([])
+    # the list of assignments
+    assignments = [-1] * samples 
+    # the costs as of last iteration
+    last_costs = [0] * intervals
+
+    samples_list = list(range(samples))
+    random.seed(0)
+    random.shuffle(samples_list)
+
+    # greedily loop through all the samples
+    for sample in samples_list:
+        # original processor
+        original_processor = original_assignment[sample]
+        # quick check if the costs at all iterations are less than the reassignment cost
+        trivial = True
+        for i in range(intervals):
+            if matrix[sample][i] > reassignment_cost:
+                trivial = False
+                break
+        # assign the sample to the original processor if the cost is trivial
+        if trivial:
+            assignments[sample] = original_processor
+            for i in range(intervals):
+                processor_costs[original_processor][i] += matrix[sample][i]
+                last_costs[i] = max(last_costs[i], processor_costs[original_processor][i])
+        # otherwise, perform the greedy assignment
+        else:
+            # compute the new cost of assigning the sample to each processor
+            costs = [0] * processors
+            for processor in range(processors):
+                # add the reassignment cost the first time a sample is reassigned to a different processor
+                if processor != original_processor and processor not in reassignments[original_processor]:
+                    costs[processor] += reassignment_cost * intervals
+                # iterate through the intervals
+                for i in range(intervals):
+                    # the new cost of this processor at this interval
+                    cost = processor_costs[processor][i] + matrix[sample][i]
+                    # the cost of this interval is the max cost as of last iteration and the new cost
+                    costs[processor] += max(last_costs[i], cost)
+            # the processor with the first lowest cost is the one we assign the sample to
+            min_processor = costs.index(min(costs)) # return the leftmost occurance
+            # print('Sample {} -> Processor {}'.format(sample, min_processor))
+            # update the assignments and reassignments
+            reassignment = False
+            assignments[sample] = min_processor
+            if min_processor != original_processor:
+                reassignments[original_processor].append(min_processor)
+                reassignment = True
+            # update the processor costs and last costs
+            for i in range(intervals):
+                processor_costs[min_processor][i] += matrix[sample][i]
+                if reassignment:
+                    processor_costs[min_processor][i] += reassignment_cost
+                last_costs[i] = max(last_costs[i], processor_costs[min_processor][i])
+
+    return assignments
+
+# Tries to balance out the computation cost
+def balance_greedy(matrix: list, width: int, height: int, intervals: int, processors: int, original_assignment: list, reassignment_cost: float) -> List[int]:
+    # just return the original assignment as is if there is only one processor
+    if processors == 1:
+        return original_assignment
+
+    # the total number of samples is width times height
+    samples = width * height
+    # the cells on each processor
+    processor_cells = []
+    # the interval costs of each processor
+    processor_costs = []
+    # the reassignment targets for each processor
+    reassignment_targets = []
+    # the total costs of processors
+    processor_total_costs = {}
+    for processor in range(processors):
+        processor_cells.append([])
+        reassignment_targets.append([])
+        processor_costs.append([0] * intervals)
+        processor_total_costs[processor] = 0
+    # the list of assignments
+    assignments = [-1] * samples 
+    # compute the costs of each processor given the original assignment
+    for sample in range(samples):
+        processor_cells[original_assignment[sample]].append(sample)
+        for i in range(intervals):
+            processor_costs[original_assignment[sample]][i] += matrix[sample][i]
+            processor_total_costs[original_assignment[sample]] += matrix[sample][i]
+
+    # sort the processors by their total costs
+    sorted_processors = sorted(processor_total_costs.items(), key=lambda x: x[1])
+    print(sorted_processors)
+
+    # repeatedly even out the costs of the processors until the difference is less than the reassignment cost
+    while True:
+        # remove the most and least costly processors
+        most_costly = sorted_processors.pop()
+        least_costly = sorted_processors.pop(0)
+        # if the difference is less than the reassignment cost, break the loop
+        if most_costly[1] - least_costly[1] <= reassignment_cost * intervals:
+            print('Stopping reassignment as the difference between {}: {} and {}: {} is less than {}'.format(most_costly[0], most_costly[1], least_costly[0], least_costly[1], reassignment_cost * intervals))
+            break
+        # add the reassignment targets
+        reassignment_targets[most_costly[0]].append(least_costly[0])
+        print('Reassigning {} to {}'.format(most_costly[0], least_costly[0]))
+        # otherwise, even out the costs of the processors and add them back to the sorted processors
+        new_cost = (most_costly[1] + least_costly[1] + reassignment_cost * intervals) / 2
+        # iterate through the sorted processors and insert the two at the appropriate position
+        for i in range(len(sorted_processors)):
+            if sorted_processors[i][1] > new_cost:
+                sorted_processors.insert(i, (most_costly[0], new_cost))
+                sorted_processors.insert(i, (least_costly[0], new_cost))
+                break
+
+    # iterate through all the processors
+    for processor in range(processors):
+        # reassign if the processor has reassignment targets
+        if reassignment_targets[processor]:
+            # compute the max at each interval for fixed samples assigned to other processors
+            last_costs = [0] * intervals
+            for reassignment_target in reassignment_targets[processor]:
+                for i in range(intervals):
+                    last_costs[i] = max(last_costs[i], processor_costs[reassignment_target][i])
+
+            # add itself to the reassignment targets
+            reassignment_targets[processor].append(processor)
+            # set the processor costs of itself to 0
+            for i in range(intervals):
+                processor_costs[processor][i] = 0
+            
+            # now greedily assign the samples to all candidate processors
+            for sample in processor_cells[processor]:
+                # compute the cost if the sample is assigned to each reassignment target
+                costs = {}
+                for reassignment_target in reassignment_targets[processor]:
+                    costs[reassignment_target] = 0
+                    for i in range(intervals):
+                        costs[reassignment_target] += max(last_costs[i], processor_costs[reassignment_target][i] + matrix[sample][i])
+                # assign the sample to the processor with the minimum cost
+                min_processor = min(costs, key=costs.get)
+                assignments[sample] = min_processor
+                # update the processor costs and last costs
+                for i in range(intervals):
+                    processor_costs[min_processor][i] += matrix[sample][i]
+                    last_costs[i] = max(last_costs[i], processor_costs[min_processor][i])
+
+
+    # replace any unassigned samples that is -1 with their original assignment
+    for sample in range(samples):
+        if assignments[sample] == -1:
+            assignments[sample] = original_assignment[sample]
+
+    return assignments
+
+# Tries to balance out the computation cost with reshuffling
+def reshuffle_greedy(matrix: list, width: int, height: int, intervals: int, processors: int, original_assignment: list, reassignment_cost: float) -> List[int]:
+    # the total number of samples is width times height
+    samples = width * height
+    # the list of assignments
+    assignments = [-1] * samples
+
+    # the cells on each processor and the list of costs of processors
+    processor_cells = []
+    processor_costs = []
+    for _ in range(processors):
+        processor_cells.append([])
+        processor_costs.append([0] * intervals)
+    for sample in range(samples):
+        processor_cells[original_assignment[sample]].append(sample)
+        for i in range(intervals):
+            processor_costs[original_assignment[sample]][i] += matrix[sample][i]
+
+    # iterate through all pairs of processors and add reshuffle pairs
+    reshuffle_pairs = set()
+    for i in range(processors - 1):
+        for j in range(i + 1, processors):
+            # compute the sum of difference in costs between the two processors across all intervals
+            cost_difference = sum(abs(processor_costs[i][k] - processor_costs[j][k]) for k in range(intervals))
+            # add the pair to the reshuffle pairs if the cost difference is greater than the reassignment cost multiplied by the number of intervals
+            if cost_difference > reassignment_cost * intervals:
+                reshuffle_pairs.add(frozenset([i, j]))
+    # print the list of all reshuffle pairs for debugging
+    #print('Reshuffle pairs:', reshuffle_pairs)
+    
+    # merge the reshuffle pairs if they share a processor
+    reshuffle_groups = set()
+    fully_merged = False
+    # while there are reshuffle pairs left
+    while reshuffle_pairs and not fully_merged:
+        # pop a reshuffle pair
+        lhs = reshuffle_pairs.pop()
+        #print('Popped reshuffle pair:', lhs)
+        # iterate through the reshuffle pairs
+        for rhs in list(reshuffle_pairs):
+            # if the reshuffle pairs share a processor
+            if lhs & rhs:
+                # merge the reshuffle pairs
+                lhs |= rhs
+                reshuffle_pairs.remove(rhs)
+                #print('Merged reshuffle pair:', lhs)
+                # check if the length of the merged reshuffle pair is equal to the number of processors
+                if len(lhs) == processors:
+                    fully_merged = True
+                    #print('All processors merged into the same reshuffle group:', lhs)
+                else:
+                    # add the merged reshuffle pair back to the reshuffle pairs
+                    reshuffle_pairs.add(lhs)
+                    #print('Added reshuffle pair:', lhs)
+                # break the loop
+                break
+        # no reshuffle pairs share a processor, add it to the reshuffle groups
+        reshuffle_groups.add(lhs)
+    # Use one reshuffle group if all processors are merged
+    if fully_merged:
+        reshuffle_groups = set()
+        reshuffle_groups.add(frozenset(range(processors)))
+    # print the list of reshuffle groups for debugging
+    print('Merged reshuffle groups:', reshuffle_groups)
+    
+    # for each reshuffle group, apply greedy scheduling
+    for group in reshuffle_groups:
+        # the list of samples that are unassigned
+        unassigned_samples = []
+        for processor in group:
+            unassigned_samples.extend(processor_cells[processor])
+        # assign the samples to the processors in the group greedily\
+        processor_costs = {}
+        for processor in group:
+            processor_costs[processor] = [0] * intervals
+        last_costs = [0] * intervals
+        for sample in unassigned_samples:
+            # compute the cost of assigning the sample to each processor in the group
+            costs = {}
+            for processor in group:
+                costs[processor] = 0
+                for i in range(intervals):
+                    costs[processor] += max(last_costs[i], processor_costs[processor][i] + matrix[sample][i])
+            # assign the sample to the processor with the minimum cost
+            min_processor = min(costs, key=costs.get)
+            # update the assignments
+            assignments[sample] = min_processor
+            # update the processor costs and last costs
+            for i in range(intervals):
+                processor_costs[min_processor][i] += matrix[sample][i]
+                last_costs[i] = max(last_costs[i], processor_costs[min_processor][i])
+
+    # replace any unassigned samples that is -1 with their original assignment
+    for sample in range(samples):
+        if assignments[sample] == -1:
+            assignments[sample] = original_assignment[sample]
+
+    return assignments
+
 # partial assignment is the list of assignments so far
 # next assignment sample is the sample that will be assigned next
 # next assignment proc is the processor that the sample will be assigned to
