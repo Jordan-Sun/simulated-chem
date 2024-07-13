@@ -4,10 +4,10 @@
 index=1
 
 # Loop through the costs
-for cost in 0
+for cost in 100
 do
   # Run the first python command
-  python3 script.py complicated balance_greedy "$index" "$cost"
+  python3 script.py dynamic dynamic_reassignment "$index" "$cost"
   # Run the second python command
-  python3 script.py simulate balance_greedy "$index" "$cost"
+  # python3 script.py simulate dynamic_reassignment "$index" "$cost"
 done

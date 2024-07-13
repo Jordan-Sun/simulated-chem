@@ -10,6 +10,7 @@ import random
 import copy
 import math
 import numpy as np
+import pandas as pd
 from typing import List, Tuple
 
 def reshape_to_2d(matrix_3d):
@@ -189,6 +190,77 @@ def reassign_greedy(matrix: list, width: int, height: int, intervals: int, proce
                     processor_costs[min_processor][i] += reassignment_cost
                 last_costs[i] = max(last_costs[i], processor_costs[min_processor][i])
 
+    return assignments
+
+# Fully dynamic reassignment, temporarily placed here for testing, refer to the refactor branch for the final implementation
+def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, reassignment_cost: float) -> List[int]:
+    # just return the original assignment as is if there is only one processor
+    if processors == 1:
+        return original_assignment
+
+    # the total number of samples is width times height
+    samples = width * height
+    # the cells on each processor
+    processor_cells = []
+    for processor in range(processors):
+        processor_cells.append({})
+    # the costs of each processor
+    processor_costs = [0] * processors
+    average_cost = 0
+    # the list of assignments
+    assignments = [-1] * samples
+    # compute the costs of each processor given the original assignment
+    for sample in range(samples):
+        processor_cells[original_assignment[sample]][sample] = matrix[sample]
+        processor_costs[original_assignment[sample]] += matrix[sample]
+        average_cost += matrix[sample]
+    # compute the average cost on a processor
+    average_cost /= processors
+    # sorted costs of processors
+    sorted_processors = sorted(range(processors), key=lambda x: processor_costs[x])
+    # sort the samples by their costs
+    for processor in range(processors):
+        processor_cells[processor] = {k: v for k, v in sorted(processor_cells[processor].items(), key=lambda item: item[1])}
+    # move pointers from both ends to the middle
+    least_costly = 0
+    most_costly = processors - 1
+
+    # iterate through all the samples on the left most processor and offload them to the right most processor until the difference is less than the reassignment cost
+    while processor_costs[sorted_processors[most_costly]] - processor_costs[sorted_processors[least_costly]] > reassignment_cost:
+        # flag to check whether it is the least costly processor that has been filled or the most costly processor that has been emptied
+        filled_least_costly = False
+        # buffer to store the samples that will be reassigned
+        buffer = []
+        # reassign samples from the most costly processor to the least costly processor until the cost on the either side reaches the average cost
+        for sample, cost in processor_cells[sorted_processors[most_costly]].items():
+            # stop if the reassignment would make the cost on the least costly processor greater than the average cost
+            if processor_costs[sorted_processors[least_costly]] + cost > average_cost:
+                # the least costly processor has been filled, move to the next one
+                filled_least_costly = True
+                break
+            # skip to the next sample if the reassigned would make the cost on the most costly processor less than the average cost
+            if processor_costs[sorted_processors[most_costly]] - cost < average_cost:
+                continue
+            # reassign the sample from the most costly processor to the least costly processor
+            processor_costs[sorted_processors[least_costly]] += cost
+            processor_costs[sorted_processors[most_costly]] -= cost
+            buffer.append(sample)
+            assignments[sample] = sorted_processors[least_costly]
+        # remove the reassigned samples from the most costly processor and add them to the least costly processor
+        for sample in buffer:
+            processor_cells[sorted_processors[least_costly]][sample] = processor_cells[sorted_processors[most_costly]].pop(sample)
+        # check the flag to move the pointers
+        if filled_least_costly:
+            least_costly += 1
+        else:
+            most_costly -= 1
+        
+    # replace any unassigned samples that is -1 with their original assignment
+    for sample in range(samples):
+        if assignments[sample] == -1:
+            assignments[sample] = original_assignment[sample]
+
+    # return the assignments
     return assignments
 
 # Tries to balance out the computation cost

@@ -154,7 +154,7 @@ def complicated(function: str, workdir: str, width: int, height: int, t: int, p:
         return 1
     else:
         print('Running assignment function at {}'.format(file_name))
-    # the name of the file to read the workload from
+        # the name of the file to read the workload from
         input_name = os.path.join(workdir, 'workload.csv')
         if not os.path.exists(input_name):
             print('Workload file does not exist')
@@ -762,6 +762,58 @@ def animate(function: str, workdir: str, width: int, height: int, t: int, p: int
     ani.save(output_name)
     return 0
 
+# temporary function to test the dynamic reassignment function
+def dynamic(function: str, workdir: str, width: int, height: int, t: int, p: int, reassignment_cost: float = -1):
+    # display the parameters
+    print("width: ", width)
+    print("height: ", height)
+    print("interval: ", t)
+    print("processors: ", p)
+    print("reassignment_cost: ", reassignment_cost)
+
+    # the name of the file to read the workload from
+    input_name = os.path.join(workdir, 'workload.csv')
+    if not os.path.exists(input_name):
+        print('Workload file does not exist')
+        return -4
+    # read the workload from the file
+    workload = pd.read_csv(input_name, header='infer', index_col=0)
+    samples = width * height
+    if len(workload) != samples:
+        print('Workload file has invalid number of samples')
+        return -5
+    # the directory to read the original assignments from
+    workdir = os.path.join(workdir, 'p_{}'.format(p))
+    if not os.path.exists(workdir):
+        os.mkdir(workdir)
+    # read the original assignments from the file
+    assignment_name = os.path.join(workdir, 'original.assignment')
+    if not os.path.exists(assignment_name):
+        print('Assignment file does not exist')
+        return -6
+    # read the 2d assignment, flatten it, and pass it to the balance_greedy function as a list
+    original_assignments = pd.read_csv(assignment_name, header=None).values.flatten().tolist()
+
+    # the directory to write the results to
+    outdir = os.path.join(workdir, 'dynamic_{}'.format(reassignment_cost))
+    if os.path.exists(outdir):
+        print('Skipping dynamic reassignment function at {}'.format(outdir))
+    else:
+        os.mkdir(outdir)
+        print('Running dynamic reassignment function at {}'.format(outdir))
+    
+    # run the assignment function at each interval
+    for i in range(t):
+        # the name of the file to write the assignments to
+        file_name = os.path.join(outdir, 'interval_{}.assignment'.format(i))
+        # the assignment function
+        assignments = complex_assignment.dynamic_reassignment(workload.iloc[:, i], width, height, p, original_assignments, reassignment_cost)
+        # write the assignments to a file as csv
+        array = np.array(assignments).reshape((width,height))
+        df = pd.DataFrame(array)
+        df.to_csv(file_name, header=False, index=False)
+    return 0
+
 # the assignment function
 # the first argument is the name of the task to run
 # the second argument is the name of the function to run
@@ -867,6 +919,8 @@ def main():
         return genetic(function_name, workdir, sendCost, recvCost, x, y, t, p, extra)
     elif task_name == 'animate':
         return animate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
+    elif task_name == 'dynamic':
+        return dynamic(function_name, workdir, x, y, t, p, extra)
     else:
         print('Invalid task name')
         return -3
