@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import sys
 
 # number of processors
 processors = 24
@@ -11,7 +12,11 @@ workload = pd.read_csv(workload_file, header='infer', index_col=0)
 # infer the number of samples and intervals
 samples, intervals = workload.shape
 
-assignment_dir = 'nc4/p_24/dynamic_100'
+# use the first argument as the assignment directory
+if len(sys.argv) != 2:
+    print("Usage: python summary.py <assignment_dir>")
+    sys.exit(1)
+assignment_dir = sys.argv[1]
 
 # total cost and processor costs
 total_cost = 0

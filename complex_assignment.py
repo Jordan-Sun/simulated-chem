@@ -193,7 +193,9 @@ def reassign_greedy(matrix: list, width: int, height: int, intervals: int, proce
     return assignments
 
 # Fully dynamic reassignment, temporarily placed here for testing, refer to the refactor branch for the final implementation
-def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, reassignment_cost: float) -> List[int]:
+def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, reassignment_cost: float, approx_ratio: float) -> List[int]:
+    # constant NCELL_MAX
+    NCELL_MAX = 10368
     # just return the original assignment as is if there is only one processor
     if processors == 1:
         return original_assignment
@@ -216,6 +218,9 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
         average_cost += matrix[sample]
     # compute the average cost on a processor
     average_cost /= processors
+    # multiply by the approximation ratio
+    average_cost *= approx_ratio
+    print('Approximation target:', average_cost)
     # sorted costs of processors
     sorted_processors = sorted(range(processors), key=lambda x: processor_costs[x])
     # sort the samples by their costs
@@ -229,6 +234,8 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
     while processor_costs[sorted_processors[most_costly]] - processor_costs[sorted_processors[least_costly]] > reassignment_cost:
         # flag to check whether it is the least costly processor that has been filled or the most costly processor that has been emptied
         filled_least_costly = False
+        # samples assigned to the least costly processor
+        ncells = len(processor_cells[sorted_processors[least_costly]])
         # buffer to store the samples that will be reassigned
         buffer = []
         # reassign samples from the most costly processor to the least costly processor until the cost on the either side reaches the average cost
@@ -244,8 +251,12 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
             # reassign the sample from the most costly processor to the least costly processor
             processor_costs[sorted_processors[least_costly]] += cost
             processor_costs[sorted_processors[most_costly]] -= cost
+            ncells += 1
             buffer.append(sample)
             assignments[sample] = sorted_processors[least_costly]
+            # stop if the number of samples on the least costly processor exceeds the maximum number of cells
+            if ncells >= NCELL_MAX:
+                break
         # remove the reassigned samples from the most costly processor and add them to the least costly processor
         for sample in buffer:
             processor_cells[sorted_processors[least_costly]][sample] = processor_cells[sorted_processors[most_costly]].pop(sample)

@@ -763,7 +763,7 @@ def animate(function: str, workdir: str, width: int, height: int, t: int, p: int
     return 0
 
 # temporary function to test the dynamic reassignment function
-def dynamic(function: str, workdir: str, width: int, height: int, t: int, p: int, reassignment_cost: float = -1):
+def dynamic(function: str, workdir: str, width: int, height: int, t: int, p: int, reassignment_cost: float = -1, approx_ratio: float = 1):
     # display the parameters
     print("width: ", width)
     print("height: ", height)
@@ -796,8 +796,11 @@ def dynamic(function: str, workdir: str, width: int, height: int, t: int, p: int
 
     # the directory to write the results to
     outdir = os.path.join(workdir, 'dynamic_{}'.format(reassignment_cost))
+    if approx_ratio != 1:
+        outdir = outdir + '_{}'.format(approx_ratio)
     if os.path.exists(outdir):
         print('Skipping dynamic reassignment function at {}'.format(outdir))
+        return 1
     else:
         os.mkdir(outdir)
         print('Running dynamic reassignment function at {}'.format(outdir))
@@ -807,7 +810,7 @@ def dynamic(function: str, workdir: str, width: int, height: int, t: int, p: int
         # the name of the file to write the assignments to
         file_name = os.path.join(outdir, 'interval_{}.assignment'.format(i))
         # the assignment function
-        assignments = complex_assignment.dynamic_reassignment(workload.iloc[:, i], width, height, p, original_assignments, reassignment_cost)
+        assignments = complex_assignment.dynamic_reassignment(workload.iloc[:, i], width, height, p, original_assignments, reassignment_cost, approx_ratio)
         # write the assignments to a file as csv
         array = np.array(assignments).reshape((width,height))
         df = pd.DataFrame(array)
@@ -836,7 +839,7 @@ def main():
         extra = -1
     print("extra: ",extra)
     if len(sys.argv) > 5:
-        sendCost = int(sys.argv[5])
+        sendCost = float(sys.argv[5])
     else:
         sendCost = 1
     print("send cost: ",sendCost)
@@ -920,7 +923,7 @@ def main():
     elif task_name == 'animate':
         return animate(function_name, workdir, x, y, t, p, extra, sendCost, recvCost)
     elif task_name == 'dynamic':
-        return dynamic(function_name, workdir, x, y, t, p, extra)
+        return dynamic(function_name, workdir, x, y, t, p, extra, sendCost)
     else:
         print('Invalid task name')
         return -3
