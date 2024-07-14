@@ -225,7 +225,7 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
     sorted_processors = sorted(range(processors), key=lambda x: processor_costs[x])
     # sort the samples by their costs
     for processor in range(processors):
-        processor_cells[processor] = {k: v for k, v in sorted(processor_cells[processor].items(), key=lambda item: item[1])}
+        processor_cells[processor] = {k: v for k, v in sorted(processor_cells[processor].items(), key=lambda item: item[1], reverse = True)}
     # move pointers from both ends to the middle
     least_costly = 0
     most_costly = processors - 1
@@ -265,6 +265,9 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
             least_costly += 1
         else:
             most_costly -= 1
+    
+    # print the achieved result
+    print('Resulting peak:', max(processor_costs))
         
     # replace any unassigned samples that is -1 with their original assignment
     for sample in range(samples):
