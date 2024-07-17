@@ -7,7 +7,7 @@ index=1
 for ratio in 1
 do
   # Run the first python command
-  python3 script.py dynamic dynamic_reassignment "$index" 100 "$ratio"
+  python3 script.py dynamic dynamic_reassignment "$index" 1000 1 "$ratio"
   # Run the second python command
   # python3 script.py simulate dynamic_reassignment "$index" "$cost"
 done

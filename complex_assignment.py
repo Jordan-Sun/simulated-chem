@@ -193,7 +193,7 @@ def reassign_greedy(matrix: list, width: int, height: int, intervals: int, proce
     return assignments
 
 # Fully dynamic reassignment, temporarily placed here for testing, refer to the refactor branch for the final implementation
-def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, reassignment_cost: float, approx_ratio: float) -> List[int]:
+def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, reassignment_cost: float, lower_ratio: float, upper_ratio: float) -> List[int]:
     # constant NCELL_MAX
     NCELL_MAX = 10368
     # just return the original assignment as is if there is only one processor
@@ -218,9 +218,14 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
         average_cost += matrix[sample]
     # compute the average cost on a processor
     average_cost /= processors
+    # compute the max cost of a sample
+    max_cost = max(matrix)
+    # compute the span of the interval
+    span = max(average_cost, max_cost)
     # multiply by the approximation ratio
-    average_cost *= approx_ratio
-    print('Approximation target:', average_cost)
+    lower_bound = span * lower_ratio
+    upper_bound = span * upper_ratio
+    print(f'Span: {span}, Approximation: [{lower_bound}, {upper_bound}]')
     # sorted costs of processors
     sorted_processors = sorted(range(processors), key=lambda x: processor_costs[x])
     # sort the samples by their costs
@@ -241,12 +246,12 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
         # reassign samples from the most costly processor to the least costly processor until the cost on the either side reaches the average cost
         for sample, cost in processor_cells[sorted_processors[most_costly]].items():
             # stop if the reassignment would make the cost on the least costly processor greater than the average cost
-            if processor_costs[sorted_processors[least_costly]] + cost > average_cost:
+            if processor_costs[sorted_processors[least_costly]] + cost > upper_bound:
                 # the least costly processor has been filled, move to the next one
                 filled_least_costly = True
                 break
             # skip to the next sample if the reassigned would make the cost on the most costly processor less than the average cost
-            if processor_costs[sorted_processors[most_costly]] - cost < average_cost:
+            if processor_costs[sorted_processors[most_costly]] - cost < lower_bound:
                 continue
             # reassign the sample from the most costly processor to the least costly processor
             processor_costs[sorted_processors[least_costly]] += cost
@@ -267,7 +272,7 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
             most_costly -= 1
     
     # print the achieved result
-    print('Resulting peak:', max(processor_costs))
+    print('Interval peak:', max(processor_costs), 'trough:', min(processor_costs))
         
     # replace any unassigned samples that is -1 with their original assignment
     for sample in range(samples):
