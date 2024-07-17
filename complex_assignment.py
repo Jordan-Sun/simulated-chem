@@ -272,7 +272,9 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
             most_costly -= 1
     
     # print the achieved result
-    print('Interval peak:', max(processor_costs), 'trough:', min(processor_costs))
+    peak = max(processor_costs)
+    trough = min(processor_costs)
+    print(f'Interval diff: {peak} - {trough} = {peak - trough}')
         
     # replace any unassigned samples that is -1 with their original assignment
     for sample in range(samples):

@@ -844,7 +844,7 @@ def main():
         sendCost = 1
     print("send cost: ",sendCost)
     if len(sys.argv) > 6:
-        recvCost = int(sys.argv[6])
+        recvCost = float(sys.argv[6])
     else:
         recvCost = 1
     if len(sys.argv) > 7:
