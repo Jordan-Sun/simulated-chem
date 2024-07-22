@@ -795,7 +795,7 @@ def dynamic(function: str, workdir: str, width: int, height: int, t: int, p: int
     original_assignments = pd.read_csv(assignment_name, header=None).values.flatten().tolist()
 
     # the directory to write the results to
-    outdir = os.path.join(workdir, 'dynamic_{}'.format(reassignment_cost))
+    outdir = os.path.join(workdir, '{}_{}'.format(function, reassignment_cost))
     if lower_ratio != 1 or upper_ratio != 1:
         outdir = outdir + '_[{},{}]'.format(lower_ratio, upper_ratio)
     if os.path.exists(outdir):
@@ -810,7 +810,13 @@ def dynamic(function: str, workdir: str, width: int, height: int, t: int, p: int
         # the name of the file to write the assignments to
         file_name = os.path.join(outdir, 'interval_{}.assignment'.format(i))
         # the assignment function
-        assignments = complex_assignment.dynamic_reassignment(workload.iloc[:, i], width, height, p, original_assignments, reassignment_cost, lower_ratio, upper_ratio)
+        if function == 'limited_dynamic':
+            assignments = complex_assignment.limited_dynamic(workload.iloc[:, i], width, height, p, original_assignments, reassignment_cost, lower_ratio, upper_ratio)
+        elif function == 'dynamic':
+            assignments = complex_assignment.dynamic_reassignment(workload.iloc[:, i], width, height, p, original_assignments, reassignment_cost, lower_ratio, upper_ratio)
+        else:
+            print('Invalid assignment function')
+            return -6
         # write the assignments to a file as csv
         array = np.array(assignments).reshape((width,height))
         df = pd.DataFrame(array)

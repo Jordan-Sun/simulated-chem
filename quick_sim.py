@@ -35,17 +35,22 @@ for i in range(intervals):
     assignment_file = f'{assignment_dir}/interval_{i}.assignment'
     assignment = pd.read_csv(assignment_file, header=None).values.flatten()
     lower_bound = 0
+    max_work = 0
 
     # tally the cost of each processor at this interval according to the assignment
     for n in range(samples):
         work = workload.iloc[n, i]
         processor_costs[assignment[n]] += work
         lower_bound += work
+        if work > max_work:
+            max_work = work
 
     # print the processor with the maximum cost
     max_proc = np.argmax(processor_costs)
     max_cost = processor_costs[max_proc]
     lower_bound /= processors
+    if max_work > lower_bound:
+        lower_bound = max_work
     print(f'{i}, {max_proc}, {max_cost}, {lower_bound}, {max_cost - lower_bound}')
     # add the maximum cost to the total cost
     total_cost += max_cost
