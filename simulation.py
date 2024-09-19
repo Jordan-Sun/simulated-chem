@@ -86,6 +86,8 @@ def simulate(matrix: list, assignment: list, width: int, height: int, intervals:
                 intervalUnicasts[assignment[sample]] += (sendCost + recvCost) * different
                 intervalComputationBroadcasts[assignment[sample]] += sendCost * min(1, different) + recvCost * different + matrix[sample][interval]
                 intervalComputationUnicasts[assignment[sample]] += (sendCost + recvCost) * different + matrix[sample][interval]
+        # Print the computation at this interval for all processors
+        print('Interval', interval, 'computation:', intervalComputations)
         # Add the maximum work to the total.
         totalComputation += max(intervalComputations)
         totalBroadcast += max(intervalBroadcasts)

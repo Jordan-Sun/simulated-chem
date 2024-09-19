@@ -11,5 +11,5 @@ do
   python3 script.py dynamic dynamic "$index" 1000 1 "$cost"
   # python3 script.py dynamic limited_dynamic "$index" "$iterations" 1 1.001
   # Run the second python command
-  # python3 script.py simulate dynamic_reassignment "$index" "$cost"
+  python3 script.py simulate dynamic_reassignment "$index" "$cost"
 done
