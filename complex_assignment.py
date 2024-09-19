@@ -292,9 +292,11 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
 
 
 # Limited dynamic reassignment, temporarily placed here for testing, refer to the refactor branch for the final implementation
-def limited_dynamic(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, reassignment_cost: float, lower_ratio: float, upper_ratio: float) -> List[int]:
+def limited_dynamic(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, iterations: float, lower_ratio: float, upper_ratio: float) -> List[int]:
     # constant NCELL_MAX
     NCELL_MAX = 10368
+    # constant reassignment cost
+    reassignment_cost = 0
     # just return the original assignment as is if there is only one processor
     if processors == 1:
         return original_assignment
@@ -307,32 +309,18 @@ def limited_dynamic(matrix: pd.DataFrame, width: int, height: int, processors: i
         processor_cells.append({})
     # the costs of each processor
     processor_costs = [0] * processors
-    average_cost = 0
     # the list of assignments
     assignments = [-1] * samples
     # compute the costs of each processor given the original assignment
     for sample in range(samples):
         processor_cells[original_assignment[sample]][sample] = matrix[sample]
         processor_costs[original_assignment[sample]] += matrix[sample]
-        average_cost += matrix[sample]
-    # compute the average cost on a processor
-    average_cost /= processors
-    # compute the max cost of a sample
-    max_cost = max(matrix)
-    # compute the span of the interval
-    span = max(average_cost, max_cost)
-    # multiply by the approximation ratio
-    lower_bound = span * lower_ratio
-    upper_bound = span * upper_ratio
-    print(f'Span: {span}, Approximation: [{lower_bound}, {upper_bound}]')
     # sort the samples by their costs
     for processor in range(processors):
         processor_cells[processor] = {k: v for k, v in sorted(processor_cells[processor].items(), key=lambda item: item[1], reverse = True)}
 
-
     # repeat the process n iterations
-    n = 1
-    for iteration in range(n):
+    for iteration in range(iterations):
         # print('Iteration:', iteration)
         # sorted costs of processors
         sorted_processors = sorted(range(processors), key=lambda x: processor_costs[x])
@@ -342,6 +330,11 @@ def limited_dynamic(matrix: pd.DataFrame, width: int, height: int, processors: i
 
         # iterate through all the samples on the left most processor and offload them to the right most processor until the difference is less than the reassignment cost
         while processor_costs[sorted_processors[most_costly]] - processor_costs[sorted_processors[least_costly]] > reassignment_cost:
+            # bound is the average of the cost of the two processors multiply by the approximation ratio
+            average = (processor_costs[sorted_processors[most_costly]] + processor_costs[sorted_processors[least_costly]]) / 2
+            lower_bound = average * lower_ratio
+            upper_bound = average * upper_ratio
+
             # samples assigned to the least costly processor
             ncells = len(processor_cells[sorted_processors[least_costly]])
             # buffer to store the samples that will be reassigned
