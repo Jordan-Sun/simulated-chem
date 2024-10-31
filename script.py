@@ -795,7 +795,9 @@ def dynamic(function: str, workdir: str, width: int, height: int, t: int, p: int
     original_assignments = pd.read_csv(assignment_name, header=None).values.flatten().tolist()
 
     # the directory to write the results to
-    outdir = os.path.join(workdir, '{}_{}'.format(function, reassignment_cost))
+    outdir = os.path.join(workdir, function)
+    if reassignment_cost != -1:
+        outdir = outdir + '_{}'.format(reassignment_cost)
     if lower_ratio != 1 or upper_ratio != 1:
         outdir = outdir + '_[{},{}]'.format(lower_ratio, upper_ratio)
     if os.path.exists(outdir):
@@ -899,9 +901,9 @@ def main():
     # workdir = os.path.join('output', 'x_{}'.format(x), 'y_{}'.format(y), 't_{}'.format(t), 'r_{}'.format(r), 'trial_{}'.format(trial))
     #####
 
-    x = 8496
+    x = 144
     y = 24
-    t = 145
+    t = 72
     p = 24
     workdir = os.path.relpath('nc4')
 

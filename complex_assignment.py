@@ -293,85 +293,76 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
 
 # Limited dynamic reassignment, temporarily placed here for testing, refer to the refactor branch for the final implementation
 def limited_dynamic(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, iterations: float, lower_ratio: float, upper_ratio: float) -> List[int]:
-    # constant NCELL_MAX
-    NCELL_MAX = 10368
     # constant reassignment cost
     reassignment_cost = 0
     # just return the original assignment as is if there is only one processor
     if processors == 1:
         return original_assignment
 
-    # the total number of samples is width times height
-    samples = width * height
+    # the total number of columns is width times height
+    columns = width * height
     # the cells on each processor
-    processor_cells = []
+    processor_columns = []
     for processor in range(processors):
-        processor_cells.append({})
+        processor_columns.append({})
     # the costs of each processor
     processor_costs = [0] * processors
     # the list of assignments
-    assignments = [-1] * samples
+    assignments = [-1] * columns
     # compute the costs of each processor given the original assignment
-    for sample in range(samples):
-        processor_cells[original_assignment[sample]][sample] = matrix[sample]
-        processor_costs[original_assignment[sample]] += matrix[sample]
-    # sort the samples by their costs
-    for processor in range(processors):
-        processor_cells[processor] = {k: v for k, v in sorted(processor_cells[processor].items(), key=lambda item: item[1], reverse = True)}
+    for column in range(columns):
+        processor_columns[original_assignment[column]][column] = matrix[column]
+        processor_costs[original_assignment[column]] += matrix[column]
+    # sorted costs of processors
+    sorted_processors = sorted(range(processors), key=lambda x: processor_costs[x])
 
-    # repeat the process n iterations
-    for iteration in range(iterations):
-        # print('Iteration:', iteration)
-        # sorted costs of processors
-        sorted_processors = sorted(range(processors), key=lambda x: processor_costs[x])
-        # move pointers from both ends to the middle
-        least_costly = 0
-        most_costly = processors - 1
+    # pair the most costly and least costly processors and swap the columns between them
+    for i in range(len(sorted_processors) // 2):
+        # costs assigned to each processor
+        costs = [0, 0]
+        entries = [0, 0]
+        indices = (i, len(sorted_processors) - i - 1)
+        max_entries = 144
 
-        # iterate through all the samples on the left most processor and offload them to the right most processor until the difference is less than the reassignment cost
-        while processor_costs[sorted_processors[most_costly]] - processor_costs[sorted_processors[least_costly]] > reassignment_cost:
-            # bound is the average of the cost of the two processors multiply by the approximation ratio
-            average = (processor_costs[sorted_processors[most_costly]] + processor_costs[sorted_processors[least_costly]]) / 2
-            lower_bound = average * lower_ratio
-            upper_bound = average * upper_ratio
+        # merge columns from both processors
+        itemized_columns = []
+        for column, cost in processor_columns[sorted_processors[indices[0]]].items():
+            itemized_columns.append((column, cost))
+        for column, cost in processor_columns[sorted_processors[indices[1]]].items():
+            itemized_columns.append((column, cost))
+        # for each column, assign it to the processor with the least cost until one of the processors fills up
+        last_column = -1
+        remaining_processor = -1
+        for index in range(len(itemized_columns)):
+            column, cost = itemized_columns[index]
+            # the processor with the least cost
+            j = costs.index(min(costs))
+            # update the costs
+            costs[j] += cost
+            # update the entries
+            entries[j] += 1
+            # update the assignments
+            assignments[column] = sorted_processors[indices[j]]
+            # check if the number of entries exceeds the maximum number of cells
+            if entries[j] > max_entries:
+                last_column = index
+                remaining_processor = 1 - j
+                break
+        # for the remaining columns, assign them to the other processor
+        if last_column != -1:
+            for index in range(last_column, len(itemized_columns)):
+                column, cost = itemized_columns[index]
+                costs[remaining_processor] += cost
+                entries[remaining_processor] += 1
+                assignments[column] = sorted_processors[indices[remaining_processor]]
+        # update the processor costs
+        processor_costs[sorted_processors[indices[0]]] = costs[0]
+        processor_costs[sorted_processors[indices[1]]] = costs[1]
 
-            # samples assigned to the least costly processor
-            ncells = len(processor_cells[sorted_processors[least_costly]])
-            # buffer to store the samples that will be reassigned
-            buffer = []
-            # reassign samples from the most costly processor to the least costly processor until the cost on the either side reaches the average cost
-            for sample, cost in processor_cells[sorted_processors[most_costly]].items():
-                # stop if the reassignment would make the cost on the least costly processor greater than the average cost
-                if processor_costs[sorted_processors[least_costly]] + cost > upper_bound:
-                    break
-                # skip to the next sample if the reassigned would make the cost on the most costly processor less than the average cost
-                if processor_costs[sorted_processors[most_costly]] - cost < lower_bound:
-                    continue
-                # reassign the sample from the most costly processor to the least costly processor
-                processor_costs[sorted_processors[least_costly]] += cost
-                processor_costs[sorted_processors[most_costly]] -= cost
-                ncells += 1
-                buffer.append(sample)
-                assignments[sample] = sorted_processors[least_costly]
-                # stop if the number of samples on the least costly processor exceeds the maximum number of cells
-                if ncells >= NCELL_MAX:
-                    break
-            # remove the reassigned samples from the most costly processor and add them to the least costly processor
-            for sample in buffer:
-                processor_cells[sorted_processors[least_costly]][sample] = processor_cells[sorted_processors[most_costly]].pop(sample)
-            # move both pointers regardless of the flag
-            least_costly += 1
-            most_costly -= 1
-        
-        # print the achieved result
-        peak = max(processor_costs)
-        trough = min(processor_costs)
-        print(f'Interval diff: {peak} - {trough} = {peak - trough}')
-        
-    # replace any unassigned samples that is -1 with their original assignment
-    for sample in range(samples):
-        if assignments[sample] == -1:
-            assignments[sample] = original_assignment[sample]
+    # print the achieved result
+    peak = max(processor_costs)
+    trough = min(processor_costs)
+    print(f'Interval diff: {peak} - {trough} = {peak - trough}')
 
     # return the assignments
     return assignments
