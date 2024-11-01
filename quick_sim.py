@@ -14,7 +14,7 @@ samples, intervals = workload.shape
 
 # use the first argument as the assignment directory
 if len(sys.argv) != 2:
-    print("Usage: python summary.py <assignment_dir>")
+    print("Usage: python {} <assignment_dir>".format(sys.argv[0]))
     sys.exit(1)
 assignment_dir = sys.argv[1]
 
