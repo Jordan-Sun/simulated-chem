@@ -212,9 +212,45 @@ def reassign_greedy(matrix: list, width: int, height: int, intervals: int, proce
 
     return assignments
 
+
+def minimize_difference(elements: List[Tuple[int, float]]) -> Tuple[List[int], List[int], float]:
+    # Initialize DP table: dp[s][k] = True if sum s is achievable with k elements
+    N = len(elements) // 2
+    total_sum = sum(value for _, value in elements)
+    target = total_sum // 2
+    # dp[k][s] = True/False if sum s is achievable with k elements
+    dp = [{} for _ in range(N+1)]
+    # backtrace[k][s] = element that led to sum
+    backtrace = [{} for _ in range(N+1)]
+    dp[0][0] = True  # Base case: sum 0 achievable with 0 elements
+
+    for element in elements:
+        for k in range(N, 0, -1):
+            for s in list(dp[k-1].keys()):
+                new_sum = s + element[1]
+                if new_sum > target:
+                    break   # No need to consider larger sums
+                if new_sum in dp[k]:
+                    continue  # Already found a subset summing to new_sum
+                dp[k][new_sum] = True
+                backtrace[k][new_sum] = element
+
+    # Find the largest sum s achievable with N elements
+    best_sum = max(dp[N].keys())
+    min_diff = total_sum - 2*best_sum
+    # Reconstruct the subset summing to best_sum
+    set_A = []
+    for k in range(N, 0, -1):
+        element = backtrace[k][best_sum]
+        set_A.append(element)
+        best_sum -= element[1]
+
+    # The other set is the elements not in set_A
+    set_B = [a for a in elements if a not in set_A]
+
+    return set_A, set_B, min_diff
+
 # Fully dynamic reassignment, temporarily placed here for testing, refer to the refactor branch for the final implementation
-
-
 def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, reassignment_cost: float, lower_ratio: float, upper_ratio: float) -> List[int]:
     # just return the original assignment as is if there is only one processor
     if processors == 1:
@@ -240,59 +276,22 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
 
     # pair the most costly and least costly processors and swap the columns between them
     for i in range(len(sorted_processors) // 2):
-        # costs assigned to each processor
-        costs = [0, 0]
-        entries = [0, 0]
-        indices = (i, len(sorted_processors) - i - 1)
-        max_entries = 144
-
         # merge columns from both processors
         itemized_columns = []
-        for column, cost in processor_columns[sorted_processors[indices[0]]].items():
+        for column, cost in processor_columns[sorted_processors[i]].items():
             itemized_columns.append((column, cost))
-        for column, cost in processor_columns[sorted_processors[indices[1]]].items():
+        for column, cost in processor_columns[sorted_processors[-i - 1]].items():
             itemized_columns.append((column, cost))
-        # pair the most costly and least costly columns
-        itemized_columns = sorted(itemized_columns, key=lambda x: x[1])
-        paired_columns = []
-        for index in range(len(itemized_columns) // 2):
-            # column #1, column #2, total cost
-            paired_columns.append((itemized_columns[index][0],
-                                   itemized_columns[-index - 1][0],
-                                   itemized_columns[index][1] + itemized_columns[-index - 1][1]))
-        # sort the paired columns by their costs
-        paired_columns = sorted(paired_columns, key=lambda x: x[2], reverse=True)
-        # for each column, assign it to the processor with the least cost until one of the processors fills up
-        last_column = -1
-        remaining_processor = -1
-        for index in range(len(paired_columns)):
-            column1, column2, cost = paired_columns[index]
-            # the processor with the least cost
-            j = costs.index(min(costs))
-            # update the costs
-            costs[j] += cost
-            # update the entries
-            entries[j] += 2
-            # update the assignments
-            assignments[column1] = sorted_processors[indices[j]]
-            assignments[column2] = sorted_processors[indices[j]]
-            # check if the number of entries exceeds the maximum number of cells
-            if entries[j] > max_entries:
-                last_column = index
-                remaining_processor = 1 - j
-                break
-        # for the remaining columns, assign them to the other processor
-        if last_column != -1:
-            for index in range(last_column, len(paired_columns)):
-                column1, column2, cost = paired_columns[index]
-                costs[remaining_processor] += cost
-                entries[remaining_processor] += 2
-                assignments[column1] = sorted_processors[indices[remaining_processor]]
-                assignments[column2] = sorted_processors[indices[remaining_processor]]
+        # run through minimization algorithm
+        set_A, set_B, _ = minimize_difference(itemized_columns)
+        # assign the columns to the processors
+        for column, _ in set_A:
+            assignments[column] = sorted_processors[i]
+        for column, _ in set_B:
+            assignments[column] = sorted_processors[-i - 1]
         # update the processor costs
-        processor_costs[sorted_processors[indices[0]]] = costs[0]
-        processor_costs[sorted_processors[indices[1]]] = costs[1]
-
+        processor_costs[sorted_processors[i]] = sum(matrix[column] for column, _ in set_A)
+        processor_costs[sorted_processors[-i - 1]] = sum(matrix[column] for column, _ in set_B)
     # print the achieved result
     peak = max(processor_costs)
     trough = min(processor_costs)
@@ -302,8 +301,6 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
     return assignments
 
 # Limited dynamic reassignment, temporarily placed here for testing, refer to the refactor branch for the final implementation
-
-
 def limited_dynamic(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, iterations: float, lower_ratio: float, upper_ratio: float) -> List[int]:
     # just return the original assignment as is if there is only one processor
     if processors == 1:
