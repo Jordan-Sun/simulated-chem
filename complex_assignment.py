@@ -218,25 +218,27 @@ def minimize_difference(elements: List[Tuple[int, float]]) -> Tuple[List[int], L
     N = len(elements) // 2
     total_sum = sum(value for _, value in elements)
     target = total_sum // 2
-    # dp[k][s] = True/False if sum s is achievable with k elements
-    dp = [{} for _ in range(N+1)]
+    # dp[k] is a set of sums achievable with k elements
+    dp = [set() for _ in range(N+1)]
     # backtrace[k][s] = element that led to sum
     backtrace = [{} for _ in range(N+1)]
-    dp[0][0] = True  # Base case: sum 0 achievable with 0 elements
+    # Base case: sum 0 achievable with 0 elements
+    dp[0].add(0)
 
     for element in elements:
         for k in range(N, 0, -1):
-            for s in list(dp[k-1].keys()):
+            for s in dp[k-1]:
                 new_sum = s + element[1]
                 if new_sum > target:
                     break   # No need to consider larger sums
                 if new_sum in dp[k]:
                     continue  # Already found a subset summing to new_sum
-                dp[k][new_sum] = True
+                dp[k].add(new_sum)
                 backtrace[k][new_sum] = element
 
     # Find the largest sum s achievable with N elements
-    best_sum = max(dp[N].keys())
+    best_sum = max(dp[N])
+    # Compute the minimum difference
     min_diff = total_sum - 2*best_sum
     # Reconstruct the subset summing to best_sum
     set_A = []
