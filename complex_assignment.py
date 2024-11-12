@@ -212,45 +212,73 @@ def reassign_greedy(matrix: list, width: int, height: int, intervals: int, proce
 
     return assignments
 
+def minimize_difference(
+    setA: List[Tuple[int, int]], setB: List[Tuple[int, int]]
+) -> Tuple[List[int], List[int]]:
+    # Convert to pairs
+    N = len(setA)
+    pairs = list(zip(setA, setB))  # Each pair is ((idA, valA), (idB, valB))
 
-def minimize_difference(elements: List[Tuple[int, float]]) -> Tuple[List[int], List[int], float]:
-    # Initialize DP table: dp[s][k] = True if sum s is achievable with k elements
-    N = len(elements) // 2
-    total_sum = sum(value for _, value in elements)
-    target = total_sum // 2
-    # dp[k] is a set of sums achievable with k elements
-    dp = [set() for _ in range(N+1)]
-    # backtrace[k][s] = element that led to sum
-    backtrace = [{} for _ in range(N+1)]
-    # Base case: sum 0 achievable with 0 elements
-    dp[0].add(0)
+    # Convert the float values to integers
+    differences = []
+    total_diff = 0
+    for (idA, valA), (idB, valB) in pairs:
+        valA_int = int(valA)
+        valB_int = int(valB)
+        diff = valA_int - valB_int
+        differences.append(diff)
+        total_diff += abs(diff)
 
-    for element in elements:
-        for k in range(N, 0, -1):
-            for s in dp[k-1]:
-                new_sum = s + element[1]
-                if new_sum > target:
-                    break   # No need to consider larger sums
-                if new_sum in dp[k]:
-                    continue  # Already found a subset summing to new_sum
-                dp[k].add(new_sum)
-                backtrace[k][new_sum] = element
+    # Initialize the DP table
+    dp = [{} for _ in range(N + 1)]  # dp[i][s] = (prev_s, choice)
+    dp[0][0] = None  # Starting point
 
-    # Find the largest sum s achievable with N elements
-    best_sum = max(dp[N])
-    # Compute the minimum difference
-    min_diff = total_sum - 2*best_sum
-    # Reconstruct the subset summing to best_sum
-    set_A = []
-    for k in range(N, 0, -1):
-        element = backtrace[k][best_sum]
-        set_A.append(element)
-        best_sum -= element[1]
+    # Build the DP table
+    for i in range(1, N + 1):
+        di = differences[i - 1]
+        dp_i = dp[i]
+        dp_prev = dp[i - 1]
+        for s in dp_prev:
+            # Option 1: Assign di with +1 (valA to set A, valB to set B)
+            s_new = s + di
+            if s_new not in dp_i:
+                dp_i[s_new] = (s, "+")
+            # Option 2: Assign di with -1 (valA to set B, valB to set A)
+            s_new_neg = s - di
+            if s_new_neg not in dp_i:
+                dp_i[s_new_neg] = (s, "-")
 
-    # The other set is the elements not in set_A
-    set_B = [a for a in elements if a not in set_A]
+    # Find the minimal absolute sum
+    min_abs_sum = None
+    target_s = None
+    for s in dp[N]:
+        abs_s = abs(s)
+        if min_abs_sum is None or abs_s < min_abs_sum:
+            min_abs_sum = abs_s
+            target_s = s
 
-    return set_A, set_B, min_diff
+    # Reconstruct the solution
+    ids_setA = []
+    ids_setB = []
+    s = target_s
+    for i in range(N, 0, -1):
+        prev_s, sign = dp[i][s]
+        ((idA, valA), (idB, valB)) = pairs[i - 1]
+        if sign == "+":
+            # valA to set A, valB to set B
+            ids_setA.append(idA)
+            ids_setB.append(idB)
+        else:
+            # valA to set B, valB to set A
+            ids_setA.append(idB)
+            ids_setB.append(idA)
+        s = prev_s  # Move to the previous state
+
+    # Reverse the IDs to correct the order
+    ids_setA.reverse()
+    ids_setB.reverse()
+
+    return ids_setA, ids_setB
 
 # Fully dynamic reassignment, temporarily placed here for testing, refer to the refactor branch for the final implementation
 def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processors: int, original_assignment: list, reassignment_cost: float, lower_ratio: float, upper_ratio: float) -> List[int]:
@@ -278,22 +306,16 @@ def dynamic_reassignment(matrix: pd.DataFrame, width: int, height: int, processo
 
     # pair the most costly and least costly processors and swap the columns between them
     for i in range(len(sorted_processors) // 2):
-        # merge columns from both processors
-        itemized_columns = []
-        for column, cost in processor_columns[sorted_processors[i]].items():
-            itemized_columns.append((column, cost))
-        for column, cost in processor_columns[sorted_processors[-i - 1]].items():
-            itemized_columns.append((column, cost))
         # run through minimization algorithm
-        set_A, set_B, _ = minimize_difference(itemized_columns)
+        set_A, set_B = minimize_difference(processor_columns[sorted_processors[i]].items(), processor_columns[sorted_processors[-i - 1]].items())
         # assign the columns to the processors
-        for column, _ in set_A:
+        for column in set_A:
             assignments[column] = sorted_processors[i]
-        for column, _ in set_B:
+        for column in set_B:
             assignments[column] = sorted_processors[-i - 1]
         # update the processor costs
-        processor_costs[sorted_processors[i]] = sum(matrix[column] for column, _ in set_A)
-        processor_costs[sorted_processors[-i - 1]] = sum(matrix[column] for column, _ in set_B)
+        processor_costs[sorted_processors[i]] = sum(matrix[column] for column in set_A)
+        processor_costs[sorted_processors[-i - 1]] = sum(matrix[column] for column in set_B)
     # print the achieved result
     peak = max(processor_costs)
     trough = min(processor_costs)
