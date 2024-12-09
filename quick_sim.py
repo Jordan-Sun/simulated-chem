@@ -1,6 +1,73 @@
+import sys
 import numpy as np
 import pandas as pd
-import sys
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
+from typing import Tuple
+
+# Simulate the computation cost and plot it as an animation
+def animate(matrix: list, assignment_file: str, samples: int, intervals: int, processors: int) -> animation.FuncAnimation:
+    # Validate the input
+    if samples != len(matrix):
+        raise ValueError('Invalid number of samples, expected ' +
+                         str(len(matrix)) + ', got ' + str(samples) + '.')
+    if intervals != len(matrix[0]):
+        raise ValueError('Invalid number of intervals, expected ' +
+                         str(len(matrix[0])) + ', got ' + str(intervals) + '.')
+
+    # Create a panda data frame to store the computation costs for each processor at each interval
+    df = pd.DataFrame(index=range(intervals), columns=range(processors))
+    # Find the maximum computation cost as well as the lower bound as we are at it
+    maxCost = 0
+    total = 0
+    span = 0
+
+    # Precopmute the computation costs for each processor at each interval
+    for interval in range(intervals):
+        assignment_file = f'{assignment_dir}/interval_{i}.assignment'
+        assignment = pd.read_csv(assignment_file, header=None).values.flatten()
+        intervalComputations = [0] * processors  
+        for sample in range(samples):
+            intervalComputations[assignment[sample]] += matrix[sample][interval]
+            total += matrix[sample][interval]
+        df.loc[interval] = intervalComputations
+        localMax = max(intervalComputations)
+        span += localMax
+        maxCost = max(maxCost, localMax)
+
+    # Compute the lower bound
+    bound = min(total / processors, span)
+    # Round the max cost up to its significant digits
+    maxCost = 100000
+
+    # Create the plot
+    fig, ax = plt.subplots()
+    ax.set_title('Computation Costs')
+    ax.set_xlabel('Processor')
+    ax.set_ylabel('Computation Cost')
+    ax.set_xticks(range(processors))
+    ax.set_ylim(0, maxCost)
+    # Make the plot wider
+    fig.set_size_inches(16, 6)
+
+    # Create an empty bar plot to be updated
+    plot = ax.bar(range(processors), [0] * processors)
+    # @todo: compute the bound and add it to the plot, currently not working with animation
+
+    # Update the animation with the current frame / interval
+    def update(interval: int):
+        # Update the bar plot with the current frame / interval
+        for i, bar in enumerate(plot):
+            bar.set_height(df.loc[interval][i])
+        # Add the bound to the plot as a horizontal line
+        ax.axhline(y=bound, color='r', linestyle='--')
+
+    # Create the animation
+    ani = animation.FuncAnimation(fig, update, frames=intervals, repeat=False)
+
+    # Return the animation
+    return ani
 
 # number of processors
 processors = 24
@@ -58,3 +125,7 @@ for i in range(intervals):
 
 # print the total cost
 print(f'Total, NA, {total_cost}, {total_bound}, {total_cost - total_bound}')
+
+# create the animation
+ani = animate(workload.values, assignment_dir, samples, intervals, processors)
+ani.save(assignment_dir + '/animation.gif', fps=1)
