@@ -1,4 +1,5 @@
-FROM --platform=linux/amd64 mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
+ARG TARGETPLATFORM=linux/amd64
+FROM --platform=$TARGETPLATFORM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
 # Update pip
 RUN pip3 install --upgrade pip
 # Python libraries

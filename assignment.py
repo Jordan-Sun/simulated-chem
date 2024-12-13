@@ -50,6 +50,14 @@ if __name__ == '__main__':
     # print(assignment.assignment)
     # print(assignment.processors)
     # Test reading from csv file
-    assignment = Assignment.read_csv("test/original_assignment.csv")
+    assignment = Assignment.read_csv("test/og_assignments/c24_p24.csv")
+    print(assignment.assignment)
+    print(assignment.processors)
+    # Test writing to csv file
+    df = pd.DataFrame([i for i in range(6) for _ in range(576)], columns=['KppRank'])
+    assignment = Assignment(df)
+    assignment.write_csv("test/og_assignments/c24_p6.csv")
+    # Test reading back from csv file
+    assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
     print(assignment.assignment)
     print(assignment.processors)
