@@ -94,15 +94,19 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
+    # Read the workload
+    workload = Workload.read_csv("test/workloads/c24.csv")
     # # Test reading from nc4 file
     # assignment = Assignment.read_nc4("test/kpp_diags/GEOSChem.KppDiags.20190701_0000z.nc4")
     # print(assignment.assignment)
     # print(assignment.processors)
-    # # Test reading from csv file
-    # og_assignment = Assignment.read_csv(
-    #     "test/og_assignments/c24_p24.csv")
-    # print(og_assignment.assignment)
-    # print(og_assignment.processors)
+    # Test reading from csv file
+    og_assignment = Assignment.read_csv(
+        "test/og_assignments/c24_p24.csv")
+    print(og_assignment.assignment)
+    print(og_assignment.processors)
+    # Test simulate
+    L_sim = og_assignment.simulate(workload, "test/og_assignments/c24_p24_simulation.csv")
     # # Test writing to csv file
     # df = pd.DataFrame([i for i in range(6) for _ in range(576)], columns=['KppRank'])
     # og_assignment = Assignment(df)
@@ -111,6 +115,8 @@ if __name__ == '__main__':
     og_assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
     print(og_assignment.assignment)
     print(og_assignment.processors)
+    # Test simulate
+    L_sim = og_assignment.simulate(workload, "test/og_assignments/c24_p6_simulation.csv")
     # Test read MIQCP assignment
     assignment = Assignment.read_csv("test/MIQCP/c24_p6/assignment.csv")
     print(assignment.assignment)
@@ -118,5 +124,4 @@ if __name__ == '__main__':
     # Test write mapping
     assignment.write_mapping(og_assignment, "test/MIQCP/c24_p6/mappings")
     # Test simulate
-    workload = Workload.read_csv("test/workloads/c24.csv")
     L_sim = assignment.simulate(workload, "test/MIQCP/c24_p6/simulation.csv")

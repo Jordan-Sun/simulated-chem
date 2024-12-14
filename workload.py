@@ -71,14 +71,33 @@ class Workload:
     def write_csv(self, file_name: os.path):
         self.workload.to_csv(file_name)
 
+    # Computes the lower bound of the workload for a given number of processors for the given intervals if given
+    def lower_bound(self, processors: int, intervals: list[int] = None) -> int:
+        # If intervals is not given, use all intervals
+        if intervals is None:
+            intervals = range(self.intervals)
+        # The bound is the sum of span at each interval
+        L_bound = 0
+        for interval in intervals:
+            # The span of the interval is the sum of the workload at the interval divided by the number of processors
+            w_max = self.workload.iloc[:, interval].max()
+            L_avg = self.workload.iloc[:, interval].sum() / processors
+            # Add the maximum of the average and maximum workload to the bound, also ceil it because fraction is not possible
+            L_bound += np.ceil(max(L_avg, w_max))
+        return int(L_bound)
+
+
 # If ran as main, test the workload class
 if __name__ == "__main__":
-    # Test reading from nc4 file
-    workload = Workload.read_nc4_file("test/kpp_diags/GEOSChem.KppDiags.20190701_0000z.nc4")
-    print(workload.workload)
-    # Test reading from nc4 directory
-    workload = Workload.read_nc4_dir("test/kpp_diags")  
-    print(workload.workload)
+    # # Test reading from nc4 file
+    # workload = Workload.read_nc4_file("test/kpp_diags/GEOSChem.KppDiags.20190701_0000z.nc4")
+    # print(workload.workload)
+    # # Test reading from nc4 directory
+    # workload = Workload.read_nc4_dir("test/kpp_diags")  
+    # print(workload.workload)
     # Test reading from csv file
-    workload = Workload.read_csv("test/workload.csv")
+    workload = Workload.read_csv("test/workloads/c24.csv")
     print(workload.workload)
+    # Test computing lower bound
+    print(workload.lower_bound(6, [0]))
+    print(workload.lower_bound(24, [0]))
