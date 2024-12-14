@@ -86,6 +86,8 @@ def MIQCP(
         max_threads = min(max_threads, 64)
         # Enable multi-threading to use all available cores
         solver.setParam("parallel/maxnthreads", max_threads)
+        # Cap memory usage to 80 GB
+        solver.setRealParam("limits/memory", 80000.0)
         # Solve the model under concurrent mode
         solver.solveConcurrent()
         # Get the best solution
@@ -94,7 +96,7 @@ def MIQCP(
         # Print the solution to the log file if specified
         if sol_log is not None:
             solver.writeBestSol(sol_log)
-    
+
     # Create the new assignment starting with the original assignment
     assignment = original_assignment.assignment.copy()
     counts = [0 for _ in range(P)]
