@@ -71,14 +71,27 @@ def MIQCP(
     # Add the objective function
     solver.setObjective(L, "minimize")
 
-    # Enable multi-threading to use all available cores
-    solver.setParam("parallel/maxnthreads", max_threads)
-    # Solve the model under concurrent mode
-    solver.solveConcurrent()
+    # Check if sol_log is specified and exists
+    if sol_log is not None and os.path.exists(sol_log):
+        # Read the solution from the file
+        sol = solver.readSolFile(sol_log)
+        # Check if the solution is feasible
+        if not solver.checkSol(sol):
+            # Print an error message and exit
+            print("Error: Solution is not feasible")
+            return None
+    # Otherwise, solve the model
+    else:
+        # Enable multi-threading to use all available cores
+        solver.setParam("parallel/maxnthreads", max_threads)
+        # Solve the model under concurrent mode
+        solver.solveConcurrent()
+        # Get the best solution
+        sol = solver.getBestSol()
 
-    # Print the solution to the log file if specified
-    if sol_log is not None:
-        solver.writeBestSol(sol_log)
+        # Print the solution to the log file if specified
+        if sol_log is not None:
+            solver.writeBestSol(sol_log)
     
     # Create the new assignment starting with the original assignment
     assignment = original_assignment.assignment.copy()
@@ -87,14 +100,14 @@ def MIQCP(
     for sample in range(workload.samples):
         rank = original_assignment.assignment['KppRank'][sample]
         # Check if the column is assigned to the processor
-        if solver.getVal(x[counts[i], rank]) == 1:
+        if solver.getSolVal(sol, x[counts[rank], rank]) == 1:
             # Figure out which processor the column is assigned to
             for j in range(P):
                 # Skip if j == rank
                 if j == rank:
                     continue
                 # Check if the column is assigned to the processor
-                if solver.getVal(s[rank, j]) == 1:
+                if solver.getSolVal(sol, s[rank, j]) == 1:
                     # Assign the column to the processor
                     assignment.loc[sample, 'KppRank'] = j
                     break
@@ -112,5 +125,5 @@ if __name__ == "__main__":
     workload = Workload.read_csv(f"test/workloads/c{res}.csv")
     procs = 6
     original_assignment = Assignment.read_csv(f"test/og_assignments/c{res}_p{procs}.csv")
-    assignment = MIQCP(workload, original_assignment, 0, os.cpu_count(), f"test/MIQCP/c{res}_p{procs}.sol")
-    assignment.write_csv(f"test/MIQCP/c{res}_p{procs}.csv")
+    assignment = MIQCP(workload, original_assignment, 0, os.cpu_count(), f"test/MIQCP/c{res}_p{procs}/solution.txt")
+    assignment.write_csv(f"test/MIQCP/c{res}_p{procs}/assignment.csv")

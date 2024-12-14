@@ -1,3 +1,4 @@
+from workload import Workload
 
 import os
 from dataclasses import dataclass, field
@@ -65,6 +66,31 @@ class Assignment:
                 df = pd.DataFrame(mapping[processor])
                 df.to_csv(f, header=False, index=False)
 
+    # Simulates the assignment for a given workload
+    def simulate(self, workload: 'Workload', sim_log: str = None) -> int:
+        # Initialize the simulated workload 
+        L_sim = 0
+        # Open the log file if it is provided
+        if sim_log is not None:
+            f = open(sim_log, 'w')
+            f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Max\n")
+        # Iterate over the intervals
+        for interval in range(self.intervals):
+            # Store the workload for each processor in a list
+            L_int = [0 for _ in range(self.processors)]
+            # Iterate over the samples
+            for sample in range(self.samples):
+                # Obtain the processor to which the sample is assigned
+                processor = self.assignment.iloc[sample, interval]
+                # Add the workload to the processor
+                L_int[processor] += workload.workload.iloc[sample, interval]
+            # Add the maximum workload to the simulated workload
+            L_sim += max(L_int)    
+            # Write the interval workload to the log file
+            if sim_log is not None:
+                f.write(f"{interval}," + ",".join([str(L) for L in L_int]) + f",{max(L_int)}\n")
+        return L_sim
+
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
@@ -86,8 +112,11 @@ if __name__ == '__main__':
     print(og_assignment.assignment)
     print(og_assignment.processors)
     # Test read MIQCP assignment
-    assignment = Assignment.read_csv("test/MIQCP/c24_p6.csv")
+    assignment = Assignment.read_csv("test/MIQCP/c24_p6/assignment.csv")
     print(assignment.assignment)
     print(assignment.processors)
     # Test write mapping
-    assignment.write_mapping(og_assignment, "test/MIQCP/mappings/c24_p6")
+    assignment.write_mapping(og_assignment, "test/MIQCP/c24_p6/mappings")
+    # Test simulate
+    workload = Workload.read_csv("test/workloads/c24.csv")
+    L_sim = assignment.simulate(workload, "test/MIQCP/c24_p6/simulation.csv")
