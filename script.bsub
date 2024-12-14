@@ -1,12 +1,13 @@
 #BSUB -q rvmartin
 #BSUB -G compute-rvmartin
 #BSUB -n 64
-#BSUB -R "rusage[mem=30GB] span[hosts=1]"
-#BSUB -M 30000
+#BSUB -R "rusage[mem=80GB] span[hosts=1]"
 #BSUB -a "docker(jordansun/simulated-chem:v1)"
 #BSUB -J "Solve MIQCP"
 #BSUB -N
 #BSUB -u zhuoran.sun@wustl.edu
 #BSUB -o job-%J.txt
+
+ulimit -v 83886080
 
 python3 dynamic_constrained.py
