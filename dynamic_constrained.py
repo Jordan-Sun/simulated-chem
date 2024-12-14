@@ -127,6 +127,6 @@ if __name__ == "__main__":
     workload = Workload.read_csv(f"test/workloads/c{res}.csv")
     procs = 24
     original_assignment = Assignment.read_csv(f"test/og_assignments/c{res}_p{procs}.csv")
-    os.mkdir(f"test/MIQCP/c{res}_p{procs}", exist_ok=True)
+    os.mkdirs(f"test/MIQCP/c{res}_p{procs}", exist_ok=True)
     assignment = MIQCP(workload, original_assignment, 0, os.cpu_count(), f"test/MIQCP/c{res}_p{procs}/solution.txt")
     assignment.write_csv(f"test/MIQCP/c{res}_p{procs}/assignment.csv")
