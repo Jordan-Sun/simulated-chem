@@ -42,6 +42,29 @@ class Assignment:
     def write_csv(self, file_name: os.path):
         self.assignment.to_csv(file_name)
 
+    # Writes the assignment to a directory of mapping files for each processor
+    def write_mapping(self, original_assignment: 'Assignment', directory: os.path):
+        # Create the directory if it does not exist
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        # Matrix for each processor to store the mapping
+        mapping = [[[] for _ in range(self.intervals)] for _ in range(self.processors)]
+        # Iterate over the intervals
+        for interval in range(self.intervals):
+            # Iterate over the samples
+            for sample in range(self.samples):
+                # Obtain the processor from the original assignment
+                source = original_assignment.assignment['KppRank'][sample]
+                # Obtain the processor to which the sample is assigned
+                target = self.assignment['KppRank'][sample]
+                # Add the sample to the processor's mapping
+                mapping[source][interval].append(target)
+        # Write the mapping to the directory
+        for processor in range(self.processors):
+            with open(os.path.join(directory, f"rank_{processor}.txt"), 'w') as f:
+                df = pd.DataFrame(mapping[processor])
+                df.to_csv(f, header=False, index=False)
+
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
@@ -49,15 +72,22 @@ if __name__ == '__main__':
     # assignment = Assignment.read_nc4("test/kpp_diags/GEOSChem.KppDiags.20190701_0000z.nc4")
     # print(assignment.assignment)
     # print(assignment.processors)
-    # Test reading from csv file
-    assignment = Assignment.read_csv("test/og_assignments/c24_p24.csv")
-    print(assignment.assignment)
-    print(assignment.processors)
-    # Test writing to csv file
-    df = pd.DataFrame([i for i in range(6) for _ in range(576)], columns=['KppRank'])
-    assignment = Assignment(df)
-    assignment.write_csv("test/og_assignments/c24_p6.csv")
+    # # Test reading from csv file
+    # og_assignment = Assignment.read_csv(
+    #     "test/og_assignments/c24_p24.csv")
+    # print(og_assignment.assignment)
+    # print(og_assignment.processors)
+    # # Test writing to csv file
+    # df = pd.DataFrame([i for i in range(6) for _ in range(576)], columns=['KppRank'])
+    # og_assignment = Assignment(df)
+    # og_assignment.write_csv("test/og_assignments/c24_p6.csv")
     # Test reading back from csv file
-    assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
+    og_assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
+    print(og_assignment.assignment)
+    print(og_assignment.processors)
+    # Test read MIQCP assignment
+    assignment = Assignment.read_csv("test/MIQCP/c24_p6.csv")
     print(assignment.assignment)
     print(assignment.processors)
+    # Test write mapping
+    assignment.write_mapping(og_assignment, "test/MIQCP/mappings/c24_p6")

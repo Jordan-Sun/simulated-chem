@@ -15,7 +15,9 @@ import pandas as pd
 def MIQCP(
         workload: Workload,
         original_assignment: Assignment,
-        interval: int = 0
+        interval: int = 0,
+        max_threads: int = 1,
+        sol_log: str = None
 ) -> Assignment:
     """
     Goal: minimize L
@@ -36,7 +38,7 @@ def MIQCP(
     # Combine the workload matrix and the original assignment matrix to obtain the w_{c,k} values
     w = [[] for _ in range(P)]
     for sample in range(workload.samples):
-        rank = original_assignment.assignment["KppRank"][sample]
+        rank = original_assignment.assignment['KppRank'][sample]
         w[rank].append(workload.workload.iloc[sample, interval])
 
     # Create the solver model
@@ -70,29 +72,45 @@ def MIQCP(
     solver.setObjective(L, "minimize")
 
     # Enable multi-threading to use all available cores
-    solver.setRealParam("lp/numthreads", os.cpu_count())
-    # Solve the model
-    solver.optimize()
+    solver.setParam("parallel/maxnthreads", max_threads)
+    # Solve the model under concurrent mode
+    solver.solveConcurrent()
 
-    # Print the solution
-    for c in range(C):
-        for k in range(P):
-            print(f"x_{c}_{k} = {solver.getVal(x[c, k])}")
-    for i in range(P):
-        for j in range(P):
-            if i != j:
-                print(f"s_{i}_{j} = {solver.getVal(s[i, j])}")
+    # Print the solution to the log file if specified
+    if sol_log is not None:
+        solver.writeBestSol(sol_log)
     
-    # Debug return original assignment
-    return original_assignment
+    # Create the new assignment starting with the original assignment
+    assignment = original_assignment.assignment.copy()
+    counts = [0 for _ in range(P)]
+    # Update the new assignment with the solution
+    for sample in range(workload.samples):
+        rank = original_assignment.assignment['KppRank'][sample]
+        # Check if the column is assigned to the processor
+        if solver.getVal(x[counts[i], rank]) == 1:
+            # Figure out which processor the column is assigned to
+            for j in range(P):
+                # Skip if j == rank
+                if j == rank:
+                    continue
+                # Check if the column is assigned to the processor
+                if solver.getVal(s[rank, j]) == 1:
+                    # Assign the column to the processor
+                    assignment.loc[sample, 'KppRank'] = j
+                    break
+        # Otherwise, just ignore it and keep the original assignment
+        # Increment the count of the processor regardless
+        counts[rank] += 1
 
-# If ran as main, test the  MIQCP function
+    # Return the new assignment
+    return Assignment(assignment)
+
+# If ran as main, test the MIQCP function
 if __name__ == "__main__":
-    # Read the workload from the csv file
-    workload = Workload.read_csv("test/workload.csv")
-    # Read the original assignment from the csv file
-    original_assignment = Assignment.read_csv("test/original_assignment.csv")
-    # Call the  MIQCP function
-    assignment = MIQCP(workload, original_assignment)
-    # Print the assignment
-    print(assignment.assignment)
+    # Test the MIQCP function at c24 resolution at 6 processors
+    res = 24
+    workload = Workload.read_csv(f"test/workloads/c{res}.csv")
+    procs = 6
+    original_assignment = Assignment.read_csv(f"test/og_assignments/c{res}_p{procs}.csv")
+    assignment = MIQCP(workload, original_assignment, 0, os.cpu_count(), f"test/MIQCP/c{res}_p{procs}.sol")
+    assignment.write_csv(f"test/MIQCP/c{res}_p{procs}.csv")
