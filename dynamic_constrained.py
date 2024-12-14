@@ -125,7 +125,8 @@ if __name__ == "__main__":
     # Test the MIQCP function at c24 resolution at 6 processors
     res = 24
     workload = Workload.read_csv(f"test/workloads/c{res}.csv")
-    procs = 6
+    procs = 24
     original_assignment = Assignment.read_csv(f"test/og_assignments/c{res}_p{procs}.csv")
+    os.mkdir(f"test/MIQCP/c{res}_p{procs}", exist_ok=True)
     assignment = MIQCP(workload, original_assignment, 0, os.cpu_count(), f"test/MIQCP/c{res}_p{procs}/solution.txt")
     assignment.write_csv(f"test/MIQCP/c{res}_p{procs}/assignment.csv")
