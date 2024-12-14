@@ -2,6 +2,7 @@
 #BSUB -G compute-rvmartin
 #BSUB -n 64
 #BSUB -R "rusage[mem=30GB] span[hosts=1]"
+#BSUB -M 30000
 #BSUB -a "docker(jordansun/simulated-chem:v1)"
 #BSUB -J "Solve MIQCP"
 #BSUB -N
