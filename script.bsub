@@ -1,8 +1,11 @@
-#BSUB -n 1
-#BSUB -W 1440
-#BSUB -a 'docker(jordansun/simulated-chem:latest)'
-#BSUB -q cpu-compute
-#BSUB -R '(!gpu)'
+#BSUB -q rvmartin
+#BSUB -G compute-rvmartin
+#BSUB -n 64
+#BSUB -R "rusage[mem=30GB] span[hosts=1]"
+#BSUB -a "docker(jordansun/simulated-chem:latest)""
+#BSUB -J "Solve MIQCP"
 #BSUB -N
+#BSUB -u zhuoran.sun@wustl.edu
+#BSUB -o job-%J.txt
 
 python3 dynamic_constrained.py
