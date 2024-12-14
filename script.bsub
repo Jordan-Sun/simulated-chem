@@ -1,0 +1,8 @@
+#BSUB -n 1
+#BSUB -W 1440
+#BSUB -a 'docker(jordansun/simulated-chem:latest)'
+#BSUB -q cpu-compute
+#BSUB -R '(!gpu)'
+#BSUB -N
+
+python3 dynamic_constrained.py
