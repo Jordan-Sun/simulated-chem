@@ -82,6 +82,8 @@ def MIQCP(
             return None
     # Otherwise, solve the model
     else:
+        # Cap max_threads to 64 if it exceeds due to SCIP limitations
+        max_threads = min(max_threads, 64)
         # Enable multi-threading to use all available cores
         solver.setParam("parallel/maxnthreads", max_threads)
         # Solve the model under concurrent mode
