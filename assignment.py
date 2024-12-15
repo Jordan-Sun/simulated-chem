@@ -21,6 +21,13 @@ class Assignment:
             # The number of processors is the maximum value in the assignment matrix plus one
             self.processors = np.max(self.assignment.values) + 1
 
+    # Concatenates a list of assignments into a single assignment
+    @staticmethod
+    def concatenate(assigns: list['Assignment']) -> 'Assignment':
+        # Concatenate the assignments
+        assignments = [assign.assignment for assign in assigns]
+        return Assignment(pd.concat(assignments, axis=1))
+
     # Reads the assignment from a NC4 file
     @staticmethod
     def read_nc4(file_name: os.path) -> 'Assignment':

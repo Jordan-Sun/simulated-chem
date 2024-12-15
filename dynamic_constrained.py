@@ -17,7 +17,8 @@ def MIQCP(
         original_assignment: Assignment,
         interval: int = 0,
         max_threads: int = 1,
-        sol_log: str = None
+        solution_file: str = None,
+        redirect_output: bool = False
 ) -> Assignment:
     """
     Goal: minimize L
@@ -71,31 +72,47 @@ def MIQCP(
     # Add the objective function
     solver.setObjective(L, "minimize")
 
-    # Check if sol_log is specified and exists
-    if sol_log is not None and os.path.exists(sol_log):
+    # If redirect_output is True, redirect the output to python, and let the user handle it
+    if redirect_output:
+        solver.redirectOutput()
+
+    # If a solution file is provided, check if the solution is feasible
+    feasible = False
+    if solution_file is not None and os.path.exists(solution_file):
         # Read the solution from the file
-        sol = solver.readSolFile(sol_log)
+        print(f"Reading solution from {solution_file}")
+        sol = solver.readSolFile(solution_file)
         # Check if the solution is feasible
-        if not solver.checkSol(sol):
-            # Print an error message and exit
-            print("Error: Solution is not feasible")
-            return None
+        feasible = solver.checkSol(sol)
+        # Print an warning if the solution is not feasible
+        if feasible:
+            print(f"Solution for interval {interval} is feasible. Skipping the model.")
+        else:
+            print(f"Warning: Provided solution for interval {interval} is not feasible. Solving the model instead.")
+
     # Otherwise, solve the model
-    else:
-        # Cap max_threads to 64 if it exceeds due to SCIP limitations
-        max_threads = min(max_threads, 64)
-        # Enable multi-threading to use all available cores
-        solver.setParam("parallel/maxnthreads", max_threads)
+    if not feasible:
         # Cap memory usage to 80 GB
         solver.setRealParam("limits/memory", 80000.0)
-        # Solve the model under concurrent mode
-        solver.solveConcurrent()
+
+        # If max_threads is 1, solve the model under sequential mode
+        if max_threads == 1:
+            solver.optimize()
+        # Otherwise, solve the model under multi-threaded mode
+        else:
+            # Cap max_threads to 64 if it exceeds due to SCIP limitations
+            max_threads = min(max_threads, 64)
+            # Enable multi-threading to use all available cores
+            solver.setParam("parallel/maxnthreads", max_threads)
+            # Solve the model under concurrent mode
+            solver.solveConcurrent()
+        
         # Get the best solution
         sol = solver.getBestSol()
 
-        # Print the solution to the log file if specified
-        if sol_log is not None:
-            solver.writeBestSol(sol_log)
+        # Print the solution to the output file if a path is provided
+        if solution_file is not None:
+            solver.writeBestSol(solution_file)
 
     # Create the new assignment starting with the original assignment
     assignment = original_assignment.assignment.copy()
@@ -118,7 +135,9 @@ def MIQCP(
         # Otherwise, just ignore it and keep the original assignment
         # Increment the count of the processor regardless
         counts[rank] += 1
-
+    # Change the name of KppRank to interval
+    assignment.rename(columns={'KppRank': interval}, inplace=True)
+    
     # Return the new assignment
     return Assignment(assignment)
 
