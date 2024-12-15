@@ -62,9 +62,9 @@ class Assignment:
             # Iterate over the samples
             for sample in range(self.samples):
                 # Obtain the processor from the original assignment
-                source = original_assignment.assignment['KppRank'][sample]
+                source = original_assignment.assignment.iloc[sample, 0]
                 # Obtain the processor to which the sample is assigned
-                target = self.assignment['KppRank'][sample]
+                target = self.assignment.iloc[sample, interval]
                 # Add the sample to the processor's mapping
                 mapping[source][interval].append(target)
         # Write the mapping to the directory
@@ -74,21 +74,30 @@ class Assignment:
                 df.to_csv(f, header=False, index=False)
 
     # Simulates the assignment for a given workload
-    def simulate(self, workload: 'Workload', sim_log: str = None) -> int:
+    def simulate(self, workload: 'Workload', static: bool = False, sim_log: str = None) -> float:
         # Initialize the simulated workload 
         L_sim = 0
         # Open the log file if it is provided
         if sim_log is not None:
             f = open(sim_log, 'w')
             f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Max\n")
-        # Iterate over the intervals
-        for interval in range(self.intervals):
+        # Iterate over the intervals of the workload if static
+        if static:
+            intervals = range(workload.intervals)
+        # Iterate over the intervals of the assignment if not static
+        else:
+            intervals = range(self.intervals)
+
+        for interval in intervals:
             # Store the workload for each processor in a list
             L_int = [0 for _ in range(self.processors)]
             # Iterate over the samples
             for sample in range(self.samples):
                 # Obtain the processor to which the sample is assigned
-                processor = self.assignment.iloc[sample, interval]
+                if static:
+                    processor = self.assignment.iloc[sample, 0]
+                else:
+                    processor = self.assignment.iloc[sample, interval]
                 # Add the workload to the processor
                 L_int[processor] += workload.workload.iloc[sample, interval]
             # Add the maximum workload to the simulated workload
@@ -110,25 +119,27 @@ if __name__ == '__main__':
     # Test reading from csv file
     og_assignment = Assignment.read_csv(
         "test/og_assignments/c24_p24.csv")
-    print(og_assignment.assignment)
-    print(og_assignment.processors)
+    assert og_assignment.assignment.shape == (3456, 1)
+    assert og_assignment.processors == 24
+
     # Test simulate
-    L_sim = og_assignment.simulate(workload, "test/og_assignments/c24_p24_simulation.csv")
+    og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
     # # Test writing to csv file
     # df = pd.DataFrame([i for i in range(6) for _ in range(576)], columns=['KppRank'])
     # og_assignment = Assignment(df)
     # og_assignment.write_csv("test/og_assignments/c24_p6.csv")
     # Test reading back from csv file
     og_assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
-    print(og_assignment.assignment)
-    print(og_assignment.processors)
+    assert og_assignment.assignment.shape == (3456, 1)
+    assert og_assignment.processors == 6
+
     # Test simulate
-    L_sim = og_assignment.simulate(workload, "test/og_assignments/c24_p6_simulation.csv")
+    og_assignment.simulate(workload, True, "test/og_assignments/c24_p6_simulation.csv")
     # Test read MIQCP assignment
     assignment = Assignment.read_csv("test/MIQCP/c24_p6/assignment.csv")
-    print(assignment.assignment)
-    print(assignment.processors)
+    assert assignment.assignment.shape == (3456, 72)
+    assert assignment.processors == 6
     # Test write mapping
     assignment.write_mapping(og_assignment, "test/MIQCP/c24_p6/mappings")
     # Test simulate
-    L_sim = assignment.simulate(workload, "test/MIQCP/c24_p6/simulation.csv")
+    assignment.simulate(workload, False, "test/MIQCP/c24_p6/simulation.csv")
