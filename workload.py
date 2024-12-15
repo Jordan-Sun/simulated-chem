@@ -99,5 +99,5 @@ if __name__ == "__main__":
     workload = Workload.read_csv("test/workloads/c24.csv")
     print(workload.workload)
     # Test computing lower bound
-    print(workload.lower_bound(6, [0]))
+    print(workload.lower_bound(6))
     print(workload.lower_bound(24, [0]))

@@ -18,10 +18,11 @@ def MIQCP(
         interval: int = 0,
         max_threads: int = 1,
         solution_file: str = None,
-        redirect_output: bool = False
+        redirect_output: bool = False,
+        bias: float = 0.0
 ) -> Assignment:
     """
-    Goal: minimize L
+    Goal: minimize L + bias * sum_{c in C} sum_{k in P} x_{c, k}
     Constraints: where i != j != k
         L geq sum_{c in C} (1 - x_{c, k}) w_{c, k} + sum_{i in P} s_{i,k} sum_{c in C} x_{c, i} w_{c, i} forall k in P
         sum_{i in P} s_{i, k} sum_{c in C} x_{c, i} = sum_{j in P} s_{k, j} sum_{c in C} x_{c, k} forall k in P
@@ -70,7 +71,10 @@ def MIQCP(
         solver.addCons(L >= sum((1 - x[c, k]) * w[k][c] for c in range(C)) + sum(s[i, k] * sum(x[c, i] * w[i][c] for c in range(C)) for i in range(P) if i != k))
 
     # Add the objective function
-    solver.setObjective(L, "minimize")
+    if bias == 0:
+        solver.setObjective(L, "minimize")
+    else:
+        solver.setObjective(L + bias * sum(x[c, k] for c in range(C) for k in range(P)), "minimize")
 
     # If redirect_output is True, redirect the output to python, and let the user handle it
     if redirect_output:

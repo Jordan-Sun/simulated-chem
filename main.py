@@ -6,24 +6,26 @@ import sys
 import os
 import multiprocessing
 import contextlib
+from functools import partial
 
 # Thread used to process each interval
-def process_interval(interval: int) -> Assignment:
+def process_interval(interval: int, root: str, bias: float = 0.0) -> Assignment:
     print(f"Processing interval {interval}")
-    # Redirect output to log_{interval}.txt
-    with open(f"test/MIQCP/c{res}_p{procs}/logs/{interval}.txt", 'w') as f:
+    # Redirect output to log/{interval}.txt
+    with open(f"{root}/logs/{interval}.txt", 'w') as f:
         with contextlib.redirect_stdout(f):
-            # Ask MIQCP to redirect output to python and let us redirect it to log_{interval}.txt
+            # Ask MIQCP to redirect output to python and let us redirect it
             assignment = dynamic_constrained.MIQCP(
-                workload, original_assignment, interval, 1, f"test/MIQCP/c{res}_p{procs}/solutions/{interval}.txt", True)
+                workload, original_assignment, interval, 1, f"{root}/solutions/{interval}.csv", True, bias)
     return assignment
 
 # Read res and procs from arguments
-if len(sys.argv) != 3:
-    print("Usage: python main.py <res> <procs>")
+if len(sys.argv) != 4:
+    print("Usage: python main.py <res> <procs> <bias>")
     sys.exit(1)
 res = int(sys.argv[1])
 procs = int(sys.argv[2])
+bias = float(sys.argv[3])
 
 # Read workload file
 workload = Workload.read_csv(f"test/workloads/c{res}.csv")
@@ -33,10 +35,15 @@ original_assignment = Assignment.read_csv(
     f"test/og_assignments/c{res}_p{procs}.csv")
 
 # Run dynamic constrained MIQCP for each interval in parallel
-os.makedirs(f"test/MIQCP/c{res}_p{procs}/logs", exist_ok=True)
-os.makedirs(f"test/MIQCP/c{res}_p{procs}/solutions", exist_ok=True)
+if bias == 0.0:
+    root = f"test/MIQCP/c{res}_p{procs}"
+else:
+    root = f"test/MIQCP/c{res}_p{procs}_b{bias}"
+
+os.makedirs(f"{root}/logs", exist_ok=True)
+os.makedirs(f"{root}/solutions", exist_ok=True)
 with multiprocessing.Pool(processes=os.cpu_count()) as pool:
-    assignments = pool.map(process_interval, range(workload.intervals))
+    assignments = pool.map(partial(process_interval, root=root, bias=bias), range(workload.intervals))
 # Concatenate assignments and write to file
 assignment = Assignment.concatenate(assignments)
-assignment.write_csv(f"test/MIQCP/c{res}_p{procs}/assignment.csv")
+assignment.write_csv(f"{root}/assignment.csv")
