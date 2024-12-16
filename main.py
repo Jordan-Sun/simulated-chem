@@ -17,6 +17,7 @@ def process_interval(interval: int, root: str, bias: float = 0.0) -> Assignment:
             # Ask MIQCP to redirect output to python and let us redirect it
             assignment = dynamic_constrained.MIQCP(
                 workload, original_assignment, interval, 1, f"{root}/solutions/{interval}.txt", True, bias)
+    print(f"Finished interval {interval}")
     return assignment
 
 # Read res and procs from arguments
@@ -50,6 +51,7 @@ if interval is None:
     # Run all intervals in parallel
     with multiprocessing.Pool(processes=os.cpu_count()) as pool:
         assignments = pool.map(partial(process_interval, root=root, bias=bias), range(workload.intervals), chunksize=1)
+    print("Generating assignment.csv")
     # Concatenate assignments and write to file
     assignment = Assignment.concatenate(assignments)
     assignment.write_csv(f"{root}/assignment.csv")

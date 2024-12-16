@@ -93,6 +93,8 @@ def MIQCP(
             print(f"Solution for interval {interval} is feasible. Skipping the model.")
         else:
             print(f"Warning: Provided solution for interval {interval} is not feasible. Solving the model instead.")
+            # Add the solution to the solver
+            solver.addSol(sol)
 
     # Otherwise, solve the model
     if not feasible:
@@ -125,7 +127,8 @@ def MIQCP(
     for sample in range(workload.samples):
         rank = original_assignment.assignment['KppRank'][sample]
         # Check if the column is assigned to the processor
-        if solver.getSolVal(sol, x[counts[rank], rank]) == 1:
+        # Round the val since it sometimes deviates a little bit from 1
+        if solver.getSolVal(sol, x[counts[rank], rank]) >= 0.5:
             # Figure out which processor the column is assigned to
             for j in range(P):
                 # Skip if j == rank
