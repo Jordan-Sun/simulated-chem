@@ -141,14 +141,18 @@ class Assignment:
                 if source != target:
                     S_int[source] += 1
                     R_int[target] += 1
-            # Add the samples sent and received to the total
-            S += sum(S_int)
-            R += sum(R_int)
+            # Verify that the samples sent and received are equal for each processor
+            assert sum(S_int) == sum(R_int)
+            # Verify that the samples sent on each processor are all equal
+            assert all(S_int[i] == S_int[0] for i in range(self.processors))
+            # Add one of the values to the total samples sent and received
+            S += S_int[0]
+            R += R_int[0]
             # Write the interval samples sent and received to the log files
             if send_log is not None:
-                f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{sum(S_int)}\n")
+                f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{S_int[0]}\n")
             if recv_log is not None:
-                g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{sum(R_int)}\n")
+                g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{R_int[0]}\n")
         return S, R
 
 
@@ -196,11 +200,11 @@ if __name__ == '__main__':
     # Test write mapping
     print("Test write mapping")
     assignment.write_mapping(og_assignment, f"{test_path}/mappings")
-    # # Test simulate
-    # print("Test simulate")
-    # L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
-    # print(L)
-    # # Test movement
-    # print("Test movement")
-    # S, R = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
-    # print(S, R)
+    # Test simulate
+    print("Test simulate")
+    L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
+    print(L)
+    # Test movement
+    print("Test movement")
+    S, R = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+    print(S, R)
