@@ -58,7 +58,9 @@ class Assignment:
         if not os.path.exists(directory):
             os.makedirs(directory)
         # Matrix for each processor to store the mapping
-        mapping = [[[] for _ in range(self.intervals)] for _ in range(self.processors)]
+        # The first space is used to store which processor should the processor expect to receive samples
+        mapping = [[[-1] for _ in range(
+            self.intervals)] for _ in range(self.processors)]
         # Iterate over the intervals
         for interval in range(self.intervals):
             # Iterate over the samples
@@ -67,6 +69,9 @@ class Assignment:
                 source = original_assignment.assignment.iloc[sample, 0]
                 # Obtain the processor to which the sample is assigned
                 target = self.assignment.iloc[sample, interval]
+                # Set the target's first space to the source if source is not target
+                if source != target:
+                    mapping[target][interval][0] = source
                 # Add the sample to the processor's mapping
                 mapping[source][interval].append(target)
         # Write the mapping to the directory
@@ -175,11 +180,11 @@ if __name__ == '__main__':
     og_assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
     assert og_assignment.assignment.shape == (3456, 1)
     assert og_assignment.processors == 6
-    # Test simulate
-    print("Test simulate")
-    L = og_assignment.simulate(
-        workload, True, "test/og_assignments/c24_p6_simulation.csv")
-    print(L)
+    # # Test simulate
+    # print("Test simulate")
+    # L = og_assignment.simulate(
+    #     workload, True, "test/og_assignments/c24_p6_simulation.csv")
+    # print(L)
     
     print("Testing c24 p6 MIQCP")
     test_path = "test/MIQCP/c24_p6"
@@ -191,11 +196,11 @@ if __name__ == '__main__':
     # Test write mapping
     print("Test write mapping")
     assignment.write_mapping(og_assignment, f"{test_path}/mappings")
-    # Test simulate
-    print("Test simulate")
-    L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
-    print(L)
-    # Test movement
-    print("Test movement")
-    S, R = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
-    print(S, R)
+    # # Test simulate
+    # print("Test simulate")
+    # L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
+    # print(L)
+    # # Test movement
+    # print("Test movement")
+    # S, R = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+    # print(S, R)
