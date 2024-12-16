@@ -2,6 +2,8 @@ from workload import Workload
 
 import os
 from dataclasses import dataclass, field
+from typing import Tuple
+
 import netCDF4 as nc
 import numpy as np
 import pandas as pd
@@ -106,6 +108,43 @@ class Assignment:
             if sim_log is not None:
                 f.write(f"{interval}," + ",".join([str(L) for L in L_int]) + f",{max(L_int)}\n")
         return L_sim
+    
+    # Movement of samples between processors
+    def movement(self, original_assignment: 'Assignment', send_log: str = None, recv_log: str = None) -> Tuple[int, int]:
+        # Initialize the samples sent and received
+        S = 0
+        R = 0
+        # Open the log file if it is provided
+        if send_log is not None:
+            f = open(send_log, 'w')
+            f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total\n")
+        if recv_log is not None:
+            g = open(recv_log, 'w')
+            g.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total\n")
+        # Iterate over the intervals
+        for interval in range(self.intervals):
+            # Store the samples sent and received for each processor in a list
+            S_int = [0 for _ in range(self.processors)]
+            R_int = [0 for _ in range(self.processors)]
+            # Iterate over the samples
+            for sample in range(self.samples):
+                # Obtain the processor from the original assignment
+                source = original_assignment.assignment.iloc[sample, 0]
+                # Obtain the processor to which the sample is assigned
+                target = self.assignment.iloc[sample, interval]
+                # Increment the samples sent and received
+                if source != target:
+                    S_int[source] += 1
+                    R_int[target] += 1
+            # Add the samples sent and received to the total
+            S += sum(S_int)
+            R += sum(R_int)
+            # Write the interval samples sent and received to the log files
+            if send_log is not None:
+                f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{sum(S_int)}\n")
+            if recv_log is not None:
+                g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{sum(R_int)}\n")
+        return S, R
 
 
 # If ran as main, test the assignment class
@@ -116,30 +155,47 @@ if __name__ == '__main__':
     # assignment = Assignment.read_nc4("test/kpp_diags/GEOSChem.KppDiags.20190701_0000z.nc4")
     # print(assignment.assignment)
     # print(assignment.processors)
+    print("Testing c24 p24 original")
     # Test reading from csv file
+    print("Test reading from csv file")
     og_assignment = Assignment.read_csv(
         "test/og_assignments/c24_p24.csv")
     assert og_assignment.assignment.shape == (3456, 1)
     assert og_assignment.processors == 24
 
     # Test simulate
-    og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
-    # # Test writing to csv file
-    # df = pd.DataFrame([i for i in range(6) for _ in range(576)], columns=['KppRank'])
-    # og_assignment = Assignment(df)
-    # og_assignment.write_csv("test/og_assignments/c24_p6.csv")
+    print("Test simulate")
+    L = og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
+    print(L)
+
+    print("Testing c24 p6 original")
     # Test reading back from csv file
+    print("Test reading from csv file")
     og_assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
     assert og_assignment.assignment.shape == (3456, 1)
     assert og_assignment.processors == 6
 
     # Test simulate
-    og_assignment.simulate(workload, True, "test/og_assignments/c24_p6_simulation.csv")
+    print("Test simulate")
+    L = og_assignment.simulate(
+        workload, True, "test/og_assignments/c24_p6_simulation.csv")
+    print(L)
+    
+    print("Testing c24 p6 MIQCP")
+    test_path = "test/MIQCP/c24_p6_b1.0"
     # Test read MIQCP assignment
-    assignment = Assignment.read_csv("test/MIQCP/c24_p6/assignment.csv")
+    print("Test reading from csv file")
+    assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
     assert assignment.assignment.shape == (3456, 72)
     assert assignment.processors == 6
     # Test write mapping
-    assignment.write_mapping(og_assignment, "test/MIQCP/c24_p6/mappings")
+    print("Test write mapping")
+    assignment.write_mapping(og_assignment, f"{test_path}/mapping")
     # Test simulate
-    assignment.simulate(workload, False, "test/MIQCP/c24_p6/simulation.csv")
+    print("Test simulate")
+    L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
+    print(L)
+    # Test movement
+    print("Test movement")
+    S, R = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+    print(S, R)
