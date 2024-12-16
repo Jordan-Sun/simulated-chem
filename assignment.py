@@ -131,6 +131,8 @@ class Assignment:
             # Store the samples sent and received for each processor in a list
             S_int = [0 for _ in range(self.processors)]
             R_int = [0 for _ in range(self.processors)]
+            # Store the send recv pairs for each processor
+            pairs = set()
             # Iterate over the samples
             for sample in range(self.samples):
                 # Obtain the processor from the original assignment
@@ -139,20 +141,36 @@ class Assignment:
                 target = self.assignment.iloc[sample, interval]
                 # Increment the samples sent and received
                 if source != target:
+                    # Add the pair to the set and increment the samples sent and received
+                    pairs.add((source, target))
                     S_int[source] += 1
                     R_int[target] += 1
-            # Verify that the samples sent and received are equal for each processor
-            assert sum(S_int) == sum(R_int)
-            # Verify that the samples sent on each processor are all equal
-            assert all(S_int[i] == S_int[0] for i in range(self.processors))
-            # Add one of the values to the total samples sent and received
-            S += S_int[0]
-            R += R_int[0]
+            # Verify that each processor is in one send recv pair as source and one as target
+            sources = [0 for _ in range(self.processors)]
+            targets = [0 for _ in range(self.processors)]
+            for source, target in pairs:
+                sources[source] += 1
+                targets[target] += 1
+            for i in range(self.processors):
+                if sources[i] != 1:
+                    print(f"Error: Processor {i} is not in exactly one send pair at interval {interval}")
+                    print(f"Pairs: {pairs}")
+                if targets[i] != 1:
+                    print(f"Error: Processor {i} is not in exactly one recv pair at interval {interval}")
+                    print(f"Pairs: {pairs}")
+            # Verify that the samples sent is equal to the samples received for each pair
+            for source, target in pairs:
+                if S_int[source] != R_int[target]:
+                    print(f"Error: Processor {source} sent {S_int[source]} samples but processor {target} received {R_int[target]} samples at interval {interval}")
+                    print(f"Pairs: {pairs}")
+            # Add the samples sent and received to the total
+            S += sum(S_int)
+            R += sum(R_int)
             # Write the interval samples sent and received to the log files
             if send_log is not None:
-                f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{S_int[0]}\n")
+                f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{sum(S_int)}\n")
             if recv_log is not None:
-                g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{R_int[0]}\n")
+                g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{sum(R_int)}\n")
         return S, R
 
 
