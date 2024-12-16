@@ -10,18 +10,24 @@ if [ $# -lt 1 ]; then
 fi
 
 ROOTDIR="$1"
-
-# Create the solutions folder if it doesn't exist
 mkdir -p "$ROOTDIR/solutions"
 
-# Iterate over each file in the logs folder
 for logfile in "$ROOTDIR/logs/"*; do
-  # Make sure it's a regular file
   if [ -f "$logfile" ]; then
     filename=$(basename "$logfile")
     echo "Extracting solution from $filename..."
-    # Extract from 'objective value:' to the end of file
-    sed -n '/objective value:/,$p' "$logfile" > "$ROOTDIR/solutions/$filename"
+
+    # Extract lines from 'objective value:' to the end
+    extracted="$(sed -n '/objective value:/,$p' "$logfile")"
+
+    # Skip if no lines were extracted
+    if [ -z "$extracted" ]; then
+      echo "Skipping $filename: no solution found."
+      continue
+    fi
+
+    # Write extracted lines to the corresponding file in solutions/
+    echo "$extracted" > "$ROOTDIR/solutions/$filename"
   fi
 done
 
