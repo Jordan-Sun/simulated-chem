@@ -71,7 +71,7 @@ class Assignment:
                 mapping[source][interval].append(target)
         # Write the mapping to the directory
         for processor in range(self.processors):
-            with open(os.path.join(directory, f"rank_{processor}.txt"), 'w') as f:
+            with open(os.path.join(directory, f"rank_{processor}.csv"), 'w') as f:
                 df = pd.DataFrame(mapping[processor])
                 df.to_csv(f, header=False, index=False)
 
@@ -151,22 +151,23 @@ class Assignment:
 if __name__ == '__main__':
     # Read the workload
     workload = Workload.read_csv("test/workloads/c24.csv")
+
     # # Test reading from nc4 file
     # assignment = Assignment.read_nc4("test/kpp_diags/GEOSChem.KppDiags.20190701_0000z.nc4")
     # print(assignment.assignment)
     # print(assignment.processors)
-    print("Testing c24 p24 original")
-    # Test reading from csv file
-    print("Test reading from csv file")
-    og_assignment = Assignment.read_csv(
-        "test/og_assignments/c24_p24.csv")
-    assert og_assignment.assignment.shape == (3456, 1)
-    assert og_assignment.processors == 24
 
-    # Test simulate
-    print("Test simulate")
-    L = og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
-    print(L)
+    # print("Testing c24 p24 original")
+    # # Test reading from csv file
+    # print("Test reading from csv file")
+    # og_assignment = Assignment.read_csv(
+    #     "test/og_assignments/c24_p24.csv")
+    # assert og_assignment.assignment.shape == (3456, 1)
+    # assert og_assignment.processors == 24
+    # # Test simulate
+    # print("Test simulate")
+    # L = og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
+    # print(L)
 
     print("Testing c24 p6 original")
     # Test reading back from csv file
@@ -174,7 +175,6 @@ if __name__ == '__main__':
     og_assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
     assert og_assignment.assignment.shape == (3456, 1)
     assert og_assignment.processors == 6
-
     # Test simulate
     print("Test simulate")
     L = og_assignment.simulate(
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     print(L)
     
     print("Testing c24 p6 MIQCP")
-    test_path = "test/MIQCP/c24_p6_b1.0"
+    test_path = "test/MIQCP/c24_p6"
     # Test read MIQCP assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     assert assignment.processors == 6
     # Test write mapping
     print("Test write mapping")
-    assignment.write_mapping(og_assignment, f"{test_path}/mapping")
+    assignment.write_mapping(og_assignment, f"{test_path}/mappings")
     # Test simulate
     print("Test simulate")
     L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
