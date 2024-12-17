@@ -209,7 +209,7 @@ if __name__ == '__main__':
     # print(L)
     
     print("Testing c24 p6 MIQCP")
-    test_path = "test/MIQCP/c24_p6"
+    test_path = "test/MIQCP/c24_p6_b2.0"
     # Test read MIQCP assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")

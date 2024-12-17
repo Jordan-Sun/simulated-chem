@@ -19,7 +19,8 @@ def MIQCP(
         max_threads: int = 1,
         solution_file: str = None,
         redirect_output: bool = False,
-        bias: float = 0.0
+        bias: float = 0.0,
+        mem_limit: float = None
 ) -> Assignment:
     """
     Goal: minimize L + bias * sum_{c in C} sum_{k in P} x_{c, k}
@@ -98,9 +99,10 @@ def MIQCP(
 
     # Otherwise, solve the model
     if not feasible:
-        # Cap memory usage to 80 GB
-        solver.setRealParam("limits/memory", 80000.0)
-
+        # If mem_limit is provided, set the memory limit
+        if mem_limit is not None:
+            solver.setParam("limits/memory", mem_limit)
+        
         # If max_threads is 1, solve the model under sequential mode
         if max_threads == 1:
             solver.optimize()
@@ -156,5 +158,5 @@ if __name__ == "__main__":
     procs = 24
     original_assignment = Assignment.read_csv(f"test/og_assignments/c{res}_p{procs}.csv")
     os.makedirs(f"test/MIQCP/c{res}_p{procs}", exist_ok=True)
-    assignment = MIQCP(workload, original_assignment, 0, os.cpu_count(), f"test/MIQCP/c{res}_p{procs}/solution.txt")
+    assignment = MIQCP(workload, original_assignment, 0, os.cpu_count(), f"test/MIQCP/c{res}_p{procs}/solution.txt", 80000.0)
     assignment.write_csv(f"test/MIQCP/c{res}_p{procs}/assignment.csv")
