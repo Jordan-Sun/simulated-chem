@@ -112,20 +112,25 @@ class Assignment:
             # Write the interval workload to the log file
             if sim_log is not None:
                 f.write(f"{interval}," + ",".join([str(L) for L in L_int]) + f",{max(L_int)}\n")
+        # Write the total workload to the log file
+        if sim_log is not None:
+            f.write(f"Total,{L_sim}\n")
         return L_sim
     
     # Movement of samples between processors
-    def movement(self, original_assignment: 'Assignment', send_log: str = None, recv_log: str = None) -> Tuple[int, int]:
+    def movement(self, original_assignment: 'Assignment', send_log: str = None, recv_log: str = None) -> Tuple[int, int, int, int]:
         # Initialize the samples sent and received
-        S = 0
-        R = 0
+        S_sum = 0
+        R_sum = 0
+        S_max = 0
+        R_max = 0
         # Open the log file if it is provided
         if send_log is not None:
             f = open(send_log, 'w')
-            f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total\n")
+            f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total,Max\n")
         if recv_log is not None:
             g = open(recv_log, 'w')
-            g.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total\n")
+            g.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total,Max\n")
         # Iterate over the intervals
         for interval in range(self.intervals):
             # Store the samples sent and received for each processor in a list
@@ -163,15 +168,22 @@ class Assignment:
                 if S_int[source] != R_int[target]:
                     print(f"Error: Processor {source} sent {S_int[source]} samples but processor {target} received {R_int[target]} samples at interval {interval}")
                     print(f"Pairs: {pairs}")
-            # Add the samples sent and received to the total
-            S += sum(S_int)
-            R += sum(R_int)
+            # Add the samples sent and received to the total and max
+            S_sum += sum(S_int)
+            R_sum += sum(R_int)
+            S_max += max(S_int)
+            R_max += max(R_int)
             # Write the interval samples sent and received to the log files
             if send_log is not None:
-                f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{sum(S_int)}\n")
+                f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{sum(S_int)},{max(S_int)}\n")
             if recv_log is not None:
-                g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{sum(R_int)}\n")
-        return S, R
+                g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{sum(R_int)},{max(R_int)}\n")
+        # Write the total and max samples sent and received to the log files
+        if send_log is not None:
+            f.write(f"Total,{S_sum},Max,{S_max}\n")
+        if recv_log is not None:
+            g.write(f"Total,{R_sum},Max,{R_max}\n")
+        return S_sum, R_sum, S_max, R_max
 
 
 # If ran as main, test the assignment class
@@ -224,5 +236,5 @@ if __name__ == '__main__':
     print(L)
     # Test movement
     print("Test movement")
-    S, R = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
-    print(S, R)
+    S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+    print(S_sum, R_sum, S_max, R_max)

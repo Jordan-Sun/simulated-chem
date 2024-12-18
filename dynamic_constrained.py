@@ -20,12 +20,13 @@ def MIQCP(
         solution_file: str = None,
         redirect_output: bool = False,
         bias: float = 0.0,
+        const: float = 0.0,
         mem_limit: float = None
 ) -> Assignment:
     """
     Goal: minimize L + bias * sum_{c in C} sum_{k in P} x_{c, k}
     Constraints: where i != j != k
-        L geq sum_{c in C} (1 - x_{c, k}) w_{c, k} + sum_{i in P} s_{i,k} sum_{c in C} x_{c, i} w_{c, i} forall k in P
+        L geq sum_{c in C} (1 - x_{c, k}) w_{c, k} + sum_{i in P} s_{i,k} sum_{c in C} x_{c, i} w_{c, i} + const * sum_{c in C} x_{c, k} forall k in P
         sum_{i in P} s_{i, k} sum_{c in C} x_{c, i} = sum_{j in P} s_{k, j} sum_{c in C} x_{c, k} forall k in P
         sum_{i in P} s_{i, k} = 1 forall k in P
         sum_{j in P} s_{k, j} = 1 forall k in P
@@ -68,8 +69,11 @@ def MIQCP(
         # sum_{i in P} sum_{c in C} s_{i,k} x_{c, i} = sum_{j in P} sum_{c in C} s_{k, j} x_{c, k}, i != j != k
         solver.addCons(sum(s[i, k] * x[c, i] for i in range(P) if i != k for c in range(C))
                     == sum(s[k, j] * x[c, k] for j in range(P) if j != k for c in range(C)))
-        # L geq sum_{c in C} (1 - x_{c, k}) w_{c, k} + sum_{i in P} s_{i,k} sum_{c in C} x_{c, i} w_{c, i}, i != k
-        solver.addCons(L >= sum((1 - x[c, k]) * w[k][c] for c in range(C)) + sum(s[i, k] * sum(x[c, i] * w[i][c] for c in range(C)) for i in range(P) if i != k))
+        # L geq sum_{c in C} (1 - x_{c, k}) w_{c, k} + sum_{i in P} s_{i,k} sum_{c in C} x_{c, i} w_{c, i} + const * sum_{c in C} x_{c, k}, i != k
+        if const == 0:
+            solver.addCons(L >= sum((1 - x[c, k]) * w[k][c] for c in range(C)) + sum(s[i, k] * sum(x[c, i] * w[i][c] for c in range(C)) for i in range(P) if i != k))
+        else:
+            solver.addCons(L >= sum((1 - x[c, k]) * w[k][c] for c in range(C)) + sum(s[i, k] * sum(x[c, i] * w[i][c] for c in range(C)) for i in range(P) if i != k) + const * sum(x[c, k] for c in range(C)))
 
     # Add the objective function
     if bias == 0:
