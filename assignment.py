@@ -59,26 +59,43 @@ class Assignment:
             os.makedirs(directory)
         # Matrix for each processor to store the mapping
         # The first space is used to store which processor should the processor expect to receive samples
-        mapping = [[[-1] for _ in range(
+        sources = [[-1 for _ in range(self.intervals)] for _ in range(self.processors)]
+        targets = [[-1 for _ in range(self.intervals)] for _ in range(self.processors)]
+        mapping = [[[] for _ in range(
             self.intervals)] for _ in range(self.processors)]
         # Iterate over the intervals
         for interval in range(self.intervals):
+            # Reset the index counter for each interval
+            index_counter = [0 for _ in range(self.processors)]
             # Iterate over the samples
             for sample in range(self.samples):
                 # Obtain the processor from the original assignment
                 source = original_assignment.assignment.iloc[sample, 0]
+                # Increment the index counter for the source
+                index_counter[source] += 1
                 # Obtain the processor to which the sample is assigned
                 target = self.assignment.iloc[sample, interval]
-                # Set the target's first space to the source if source is not target
+                # Set the source's target and the target's source and add the sample to the mapping
                 if source != target:
-                    mapping[target][interval][0] = source
-                # Add the sample to the processor's mapping
-                mapping[source][interval].append(target)
+                    sources[target][interval] = source
+                    targets[source][interval] = target
+                    mapping[source][interval].append(index_counter[source])
         # Write the mapping to the directory
         for processor in range(self.processors):
             with open(os.path.join(directory, f"rank_{processor}.csv"), 'w') as f:
-                df = pd.DataFrame(mapping[processor])
-                df.to_csv(f, header=False, index=False)
+                # Print the number of intervals
+                f.write(f"{self.intervals}\n")
+                # Print the mapping for each interval in one line
+                for interval in range(self.intervals):
+                    # Source rank # to recv from
+                    f.write(f"{sources[processor][interval]},")
+                    # Target rank  # to send to
+                    f.write(f"{targets[processor][interval]},")
+                    # Length of the array to send
+                    f.write(f"{len(mapping[processor][interval])},")
+                    # Array of columns to send
+                    f.write(",".join([str(rank) for rank in mapping[processor][interval]]))
+                    f.write("\n")
 
     # Simulates the assignment for a given workload
     def simulate(self, workload: 'Workload', static: bool = False, sim_log: str = None) -> float:
@@ -221,7 +238,7 @@ if __name__ == '__main__':
     # print(L)
     
     print("Testing c24 p6 MIQCP")
-    test_path = "test/MIQCP/c24_p6_b2.0"
+    test_path = "test/MIQCP/c24_p6_b1.0"
     # Test read MIQCP assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
