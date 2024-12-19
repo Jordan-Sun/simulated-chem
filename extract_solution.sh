@@ -22,8 +22,15 @@ for logfile in "$ROOTDIR/logs/"*; do
 
     # Skip if no lines were extracted
     if [ -z "$extracted" ]; then
-      echo "Skipping $filename: no solution found."
+      # Extract the last complete line of the file with numbers but not legends
+      extracted="$(grep -E '^[[:space:]]*[0-9]+.*[0-9]+[[:space:]]*\|[[:space:]]*[0-9]+\.[0-9]+%[[:space:]]*\|[[:space:]]*[0-9]+\.[0-9]+%[[:space:]]*$' "$logfile" | tail -n 1)"
+      
+      # Print status message
+      echo "$filename status: $extracted"
       continue
+    else
+      # Print confirmation message
+      echo "Extracted solution from $filename"
     fi
 
     # Write extracted lines to the corresponding file in solutions/
