@@ -15,7 +15,7 @@ mkdir -p "$ROOTDIR/solutions"
 for logfile in "$ROOTDIR/logs/"*; do
   if [ -f "$logfile" ]; then
     filename=$(basename "$logfile")
-    echo "Extracting solution from $filename..."
+    echo -ne "$filename:\textracting solution...\r"
 
     # Extract lines from 'objective value:' to the end
     extracted="$(sed -n '/objective value:/,$p' "$logfile")"
@@ -23,19 +23,20 @@ for logfile in "$ROOTDIR/logs/"*; do
     # Skip if no lines were extracted
     if [ -z "$extracted" ]; then
       # Extract the last complete line of the file with numbers but not legends
-      extracted="$(grep -E '^[[:space:]]*[0-9]+.*[0-9]+[[:space:]]*\|[[:space:]]*[0-9]+\.[0-9]+%[[:space:]]*\|[[:space:]]*[0-9]+\.[0-9]+%[[:space:]]*$' "$logfile" | tail -n 1)"
-      
-      # Print status message
-      echo "$filename status: $extracted"
+      extracted="$(tail "$logfile" | grep -E '^[[:space:]]*[0-9]+.*[0-9]+[[:space:]]*\|[[:space:]]*[0-9]+\.[0-9]+%[[:space:]]*\|[[:space:]]*[0-9]+\.[0-9]+%[[:space:]]*$' | tail -n 1)"
+      # Print status message if extracted
+      if [ -n "$extracted" ]; then
+        echo -e "$filename:\t$extracted"
+      else
+        echo -e "$filename:\tnot yet started       "
+      fi
       continue
-    else
-      # Print confirmation message
-      echo "Extracted solution from $filename"
     fi
 
     # Write extracted lines to the corresponding file in solutions/
     echo "$extracted" > "$ROOTDIR/solutions/$filename"
+    # Print confirmation message with enough whitespace to overwrite the previous message
+    echo -e "$filename:\tdone                  "
   fi
 done
-
 echo "Extraction done."
