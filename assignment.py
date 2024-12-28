@@ -82,9 +82,25 @@ class Assignment:
                     mapping[source][interval].append(index_counter[source])
         # Write the mapping to the directory
         for processor in range(self.processors):
+            # Calculate the longest line length for this processor so Fortran can allocate line buffer appropriately
+            longest_line = 0
+            for interval in range(self.intervals):
+                # Length of this line: source, target, length, and the array joined by commas
+                line_length = (
+                    len(str(sources[processor][interval])) +    # Length of source
+                    len(str(targets[processor][interval])) +    # Length of target
+                    # Length of array size
+                    len(str(len(mapping[processor][interval]))) +
+                    # Length of all elements
+                    sum(len(str(rank)) for rank in mapping[processor][interval]) +
+                    # Commas between array elements and end of line
+                    len(mapping[processor][interval]) +
+                    2   # Commas between source and target and target and length
+                )
+                longest_line = max(longest_line, line_length)
             with open(os.path.join(directory, f"rank_{processor}.csv"), 'w') as f:
-                # Print the number of intervals
-                f.write(f"{self.intervals}\n")
+                # Print the number of intervals and the longest line length
+                f.write(f"{self.intervals},{longest_line}\n")
                 # Print the mapping for each interval in one line
                 for interval in range(self.intervals):
                     # Source rank # to recv from
