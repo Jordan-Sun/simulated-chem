@@ -1,6 +1,6 @@
 """
 dynamic_unconstrained.py
-Algorithms for the dynamic unconstrained reassignment problem:
+Algorithms for the dynamic constrained reassignment problem:
     - Assignment can change from interval to interval, thus algorithms only consider the current interval
     - The number of processors that columns can be reassigned to is constrained to 1.
 """

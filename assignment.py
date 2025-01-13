@@ -230,7 +230,7 @@ if __name__ == '__main__':
     # L = og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
     # print(L)
 
-    procs = 24
+    procs = 6
     print(f"Testing c24 p{procs} original")
     # Test reading back from csv file
     print("Test reading from csv file")

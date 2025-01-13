@@ -138,7 +138,8 @@ if __name__ == "__main__":
     os.makedirs(f"test/greedy/c{res}_p{procs}", exist_ok=True)
     assignments = []
     # Run all intervals in parallel
-    with multiprocessing.Pool(processes=os.cpu_count()) as pool:
-        assignments = pool.map(partial(greed_heuristic, workload, original_assignment), range(workload.intervals), chunksize = 1)
+    pool_size = 4
+    with multiprocessing.Pool(processes=pool_size) as pool:
+        assignments = pool.map(partial(greed_heuristic, workload, original_assignment), range(workload.intervals))
     assignment = Assignment.concatenate(assignments)
     assignment.write_csv(f"test/greedy/c{res}_p{procs}/assignment.csv")
