@@ -22,6 +22,9 @@ class Assignment:
             self.samples, self.intervals = self.assignment.shape
             # The number of processors is the maximum value in the assignment matrix plus one
             self.processors = np.max(self.assignment.values) + 1
+            # Throw an error if the number of processors is not a multiple of six
+            if self.processors % 6 != 0:
+                raise ValueError("The number of processors must be a multiple of six")
 
     # Concatenates a list of assignments into a single assignment
     @staticmethod
@@ -239,13 +242,13 @@ if __name__ == '__main__':
     #     workload, True, "test/og_assignments/c24_p6_simulation.csv")
     # print(L)
     
-    print("Testing c24 p6 MIQCP")
-    test_path = "test/MIQCP/c24_p6_b0.5"
-    # Test read MIQCP assignment
+    print("Testing c24 p24 Greedy")
+    test_path = "test/greedy/c24_p24"
+    # Test read assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
     assert assignment.assignment.shape == (3456, 72)
-    assert assignment.processors == 6
+    assert assignment.processors == 24
     # Test write mapping
     print("Test write mapping")
     assignment.write_mapping(og_assignment, f"{test_path}/mappings")
@@ -253,7 +256,7 @@ if __name__ == '__main__':
     print("Test simulate")
     L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
     print(L)
-    # Test movement
-    print("Test movement")
-    S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
-    print(S_sum, R_sum, S_max, R_max)
+    # # Test movement
+    # print("Test movement")
+    # S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+    # print(S_sum, R_sum, S_max, R_max)
