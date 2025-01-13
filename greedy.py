@@ -132,7 +132,7 @@ if __name__ == "__main__":
     # Test the heuristic at c24 resolution at 6 processors
     res = 24
     workload = Workload.read_csv(f"test/workloads/c{res}.csv")
-    procs = 24
+    procs = 6
     original_assignment = Assignment.read_csv(
         f"test/og_assignments/c{res}_p{procs}.csv")
     os.makedirs(f"test/greedy/c{res}_p{procs}", exist_ok=True)

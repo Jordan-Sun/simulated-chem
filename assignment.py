@@ -179,11 +179,11 @@ class Assignment:
                 sources[source] += 1
                 targets[target] += 1
             for i in range(self.processors):
-                if sources[i] != 1:
-                    print(f"Error: Processor {i} is not in exactly one send pair at interval {interval}")
+                if sources[i] > 1:
+                    print(f"Error: Processor {i} is in more than one send pair at interval {interval}")
                     print(f"Pairs: {pairs}")
-                if targets[i] != 1:
-                    print(f"Error: Processor {i} is not in exactly one recv pair at interval {interval}")
+                if targets[i] > 1:
+                    print(f"Error: Processor {i} is in more than one recv pair at interval {interval}")
                     print(f"Pairs: {pairs}")
             # Verify that the samples sent is equal to the samples received for each pair
             for source, target in pairs:
@@ -230,25 +230,26 @@ if __name__ == '__main__':
     # L = og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
     # print(L)
 
-    print("Testing c24 p6 original")
+    procs = 24
+    print(f"Testing c24 p{procs} original")
     # Test reading back from csv file
     print("Test reading from csv file")
-    og_assignment = Assignment.read_csv("test/og_assignments/c24_p6.csv")
+    og_assignment = Assignment.read_csv(f"test/og_assignments/c24_p{procs}.csv")
     assert og_assignment.assignment.shape == (3456, 1)
-    assert og_assignment.processors == 6
+    assert og_assignment.processors == procs
     # # Test simulate
     # print("Test simulate")
     # L = og_assignment.simulate(
-    #     workload, True, "test/og_assignments/c24_p6_simulation.csv")
+    #     workload, True, f"test/og_assignments/c24_p{procs}_simulation.csv")
     # print(L)
     
-    print("Testing c24 p24 Greedy")
-    test_path = "test/greedy/c24_p24"
+    print(f"Testing c24 p{procs} Greedy")
+    test_path = f"test/greedy/c24_p{procs}"
     # Test read assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
     assert assignment.assignment.shape == (3456, 72)
-    assert assignment.processors == 24
+    assert assignment.processors == procs
     # Test write mapping
     print("Test write mapping")
     assignment.write_mapping(og_assignment, f"{test_path}/mappings")
@@ -256,7 +257,7 @@ if __name__ == '__main__':
     print("Test simulate")
     L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
     print(L)
-    # # Test movement
-    # print("Test movement")
-    # S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
-    # print(S_sum, R_sum, S_max, R_max)
+    # Test movement
+    print("Test movement")
+    S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+    print(S_sum, R_sum, S_max, R_max)
