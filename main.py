@@ -15,7 +15,7 @@ def process_interval(interval: int, root: str, bias: float = 0.0, const: float =
     with open(f"{root}/logs/{interval}.txt", 'w') as f:
         with contextlib.redirect_stdout(f):
             # Ask MIQCP to redirect output to python and let us redirect it
-            assignment = dynamic_constrained.MIQCP(
+            assignment = dynamic_constrained.same_proc(
                 workload, original_assignment, interval, 1, f"{root}/solutions/{interval}.txt", True, bias, const, mem)
     print(f"Finished interval {interval}")
     return assignment
@@ -42,7 +42,7 @@ original_assignment = Assignment.read_csv(
     f"test/og_assignments/c{res}_p{procs}.csv")
 
 # Run dynamic constrained MIQCP for each interval in parallel
-root = f"test/MIQCP/c{res}_p{procs}"
+root = f"test/MIQCP_same/c{res}_p{procs}"
 if bias != 0.0:
     root = root + f"_b{bias}"
 if const != 0.0:
@@ -64,5 +64,5 @@ if interval is None:
 else:
     # Fix specific interval and ignore the assignment output
     # Output directly to stdout
-    _ = dynamic_constrained.MIQCP(
+    _ = dynamic_constrained.same_proc(
         workload, original_assignment, interval, os.cpu_count(), f"{root}/solutions/{interval}.txt", False, bias, const, total_mem)
