@@ -243,8 +243,8 @@ if __name__ == '__main__':
     #     workload, True, f"test/og_assignments/c24_p{procs}_simulation.csv")
     # print(L)
     
-    print(f"Testing c24 p{procs} Greedy")
-    test_path = f"test/MIQCP_same/c24_p{procs}"
+    print(f"Testing c24 p{procs} unconstrained")
+    test_path = f"test/uncon_MIQCP/c24_p{procs}_b1.0"
     # Test read assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
