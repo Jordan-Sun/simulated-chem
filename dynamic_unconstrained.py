@@ -26,11 +26,11 @@ def reassign(
     Goal: minimize L + bias * sum_{c in C} sum_{k in P} x_{c, k}
     Constraints: where i != j != k
         L geq sum_{c in C} (1 - x_{c, k}) w_{c, k} + sum_{i in P} s_{i,k} sum_{c in C} x_{c, i} w_{c, i} + const * sum_{c in C} x_{c, k} forall k in P
-        sum_{i > k} s_{i, k} + sum_{j < k} s_{k, j} = 1 forall k in P
+        sum_{i >= k} s_{i, k} + sum_{j < k} s_{k, j} = 1 forall k in P
     Variables: where i != j
         L in R
         x_{c,k} in {0,1} forall c in C, k in P
-        s_{i,j} in {0,1} forall {(i, j) | i > j} in P
+        s_{i,j} in {0,1} forall {(i, j) | i >= j} in P
     """
     # Extract number of processors and cells
     P = original_assignment.processors
@@ -51,15 +51,15 @@ def reassign(
     for c in range(C):
         for k in range(P):
             x[c, k] = solver.addVar(vtype="B", name=f"x_{c}_{k}")
-    # Only define s for i>j:
+    # Only define s for i>=j:
     s = {}
     for i in range(P):
-        for j in range(i):
+        for j in range(i+1):
             s[i, j] = solver.addVar(vtype="B", name=f"s_{i}_{j}")
 
     # Helper function to get the s_{i,j} variable
     def get_s(i, j):
-        if i > j:
+        if i >= j:
             return s[i, j]
         else:
             return s[j, i]
@@ -67,14 +67,14 @@ def reassign(
     # Create the constraints forall k in P
     for k in range(P):
         # Replace the original line with a single sum over get_s(k, i)
-        solver.addCons(sum(get_s(k, i) for i in range(P) if i != k) <= 1)
+        solver.addCons(sum(get_s(k, i) for i in range(P)) == 1)
         # L geq sum_{c in C} (1 - x_{c, k}) w_{c, k} + sum_{i in P} s_{i,k} sum_{c in C} x_{c, i} w_{c, i} + const * sum_{c in C} x_{c, k}, i != k
         if const == 0:
             solver.addCons(L >= sum((1 - x[c, k]) * w[k][c] for c in range(C)) + sum(
-                get_s(i, k) * sum(x[c, i] * w[i][c] for c in range(C)) for i in range(P) if i != k))
+                get_s(i, k) * sum(x[c, i] * w[i][c] for c in range(C)) for i in range(P)))
         else:
             solver.addCons(L >= sum((1 - x[c, k]) * w[k][c] for c in range(C)) + sum(get_s(i, k) * sum(
-                x[c, i] * w[i][c] for c in range(C)) for i in range(P) if i != k) + const * sum(x[c, k] for c in range(C)))
+                x[c, i] * w[i][c] for c in range(C)) for i in range(P)) + const * sum(x[c, k] for c in range(C)))
 
     # Add the objective function
     if bias == 0:
