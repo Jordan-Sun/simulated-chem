@@ -86,10 +86,12 @@ class Assignment:
         # Write the mapping to the directory
         for processor in range(self.processors):
             with open(os.path.join(directory, f"rank_{processor}.csv"), 'w') as f:
-                # Compute the maximum line length (the longest line should always be one of the mapping array lines)
+                # Compute the maximum line length (the longest line should always be one of the mapping array lines) for the processor
                 max_length = max([len(",".join([str(rank) for rank in mapping[processor][interval]]) + '\n') for interval in range(self.intervals)])
+                # Compute the NCELL_max (the maximum number of cells to send in one interval) for the processor
+                NCELL_max = max([len(mapping[processor][interval]) for interval in range(self.intervals)])
                 # Print the number of intervals and maximum length
-                f.write(f"{self.intervals},{max_length}\n")
+                f.write(f"{self.intervals},{max_length},{NCELL_max}\n")
                 # Print the mapping for each interval in one line
                 for interval in range(self.intervals):
                     # Source rank # to recv from
@@ -244,7 +246,7 @@ if __name__ == '__main__':
     # print(L)
     
     print(f"Testing c24 p{procs} unconstrained")
-    test_path = f"test/uncon_MIQCP/c24_p{procs}_b1.0"
+    test_path = f"test/uncon_MIQCP/c24_p{procs}_b0.5"
     # Test read assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
