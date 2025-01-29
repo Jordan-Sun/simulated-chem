@@ -244,7 +244,7 @@ if __name__ == '__main__':
     # print(L)
     
     print(f"Testing c24 p{procs} Greedy")
-    test_path = f"test/MIQCP_same/c24_p{procs}"
+    test_path = f"test/diff_MIQCP/c24_p{procs}"
     # Test read assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
