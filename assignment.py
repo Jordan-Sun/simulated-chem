@@ -109,7 +109,7 @@ class Assignment:
         # Open the log file if it is provided
         if sim_log is not None:
             f = open(sim_log, 'w')
-            f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Max\n")
+            f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Max,Mean,SD,CV\n")
         # Iterate over the intervals of the workload if static
         if static:
             intervals = range(workload.intervals)
@@ -129,11 +129,16 @@ class Assignment:
                     processor = self.assignment.iloc[sample, interval]
                 # Add the workload to the processor
                 L_int[processor] += workload.workload.iloc[sample, interval]
+            # Compute the statistics of the interval workload
+            max_L = max(L_int)
+            mean_L = np.mean(L_int)
+            std_L = np.std(L_int)
+            cv_L = std_L / mean_L
             # Add the maximum workload to the simulated workload
-            L_sim += max(L_int)    
+            L_sim += max_L
             # Write the interval workload to the log file
             if sim_log is not None:
-                f.write(f"{interval}," + ",".join([str(L) for L in L_int]) + f",{max(L_int)}\n")
+                f.write(f"{interval}," + ",".join([str(L) for L in L_int]) + f",{max_L},{mean_L},{std_L},{cv_L}\n")
         # Write the total workload to the log file
         if sim_log is not None:
             f.write(f"Total,{L_sim}\n")
@@ -230,7 +235,7 @@ if __name__ == '__main__':
     # L = og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
     # print(L)
 
-    procs = 6
+    procs = 24
     print(f"Testing c24 p{procs} original")
     # Test reading back from csv file
     print("Test reading from csv file")

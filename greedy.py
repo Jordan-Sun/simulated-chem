@@ -83,8 +83,21 @@ def swap_columns(
 def greed_heuristic(
         workload: Workload,
         original_assignment: Assignment,
-        interval: int = 0
+        interval: int = 0,
+        result_path: str = None
 ) -> Assignment:
+    # Check if an assignment is already at the result path
+    if result_path is not None:
+        try:
+            assignment = Assignment.read_csv(result_path)
+            print(f'Skipping interval {interval}')
+            return assignment
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print(f'Error {e} occurred while reading the assignment at {result_path} for interval {interval}')
+    
+    print(f'Starting interval {interval}')
     # Pair the most costly and least costly processors# the cells on each processor
     processor_columns = []
     for _ in range(original_assignment.processors):
@@ -104,6 +117,7 @@ def greed_heuristic(
 
     # pair the most costly and least costly processors and swap the columns between them
     for i in range(len(sorted_processors) // 2):
+        print('Pairing processor ', sorted_processors[i], 'and processor ', sorted_processors[-i - 1], 'for interval', interval)
         # run through minimization algorithm
         set_A, set_B = swap_columns(processor_columns[sorted_processors[i]].items(), processor_columns[sorted_processors[-i - 1]].items())
         # assign the columns to the processors
@@ -119,14 +133,16 @@ def greed_heuristic(
     trough = min(processor_costs)
     print(f"Interval {interval} diff: {peak} - {trough} = {peak - trough}")
 
+    # write the assignment to the result path
+    if result_path is not None:
+        Assignment(pd.DataFrame(assignments, columns=['KppRank'])).write_csv(result_path)
     # return the assignments
     return Assignment(pd.DataFrame(assignments, columns=[interval]))
 
 
 # If ran as main, test the heuristic
 if __name__ == "__main__":
-    import os
-    import multiprocessing    
+    import os  
     from functools import partial
 
     # Test the heuristic at c24 resolution at 6 processors
@@ -135,11 +151,24 @@ if __name__ == "__main__":
     procs = 6
     original_assignment = Assignment.read_csv(
         f"test/og_assignments/c{res}_p{procs}.csv")
-    os.makedirs(f"test/greedy/c{res}_p{procs}", exist_ok=True)
+    base = f"test/greedy/c{res}_p{procs}"
+    os.makedirs(base, exist_ok=True)
     assignments = []
-    # Run all intervals in parallel
-    pool_size = 4
-    with multiprocessing.Pool(processes=pool_size) as pool:
-        assignments = pool.map(partial(greed_heuristic, workload, original_assignment), range(workload.intervals))
+
+    # Multiprocessing doesn't work quite well, use batching instead
+    total_batches = 8
+    if len(os.sys.argv) > 1:
+        batch = int(os.sys.argv[1])
+
+    for interval in range(workload.intervals):
+        if batch:
+            # Skip if not in the batch
+            if interval % total_batches != batch:
+                continue
+        assignments.append(greed_heuristic(
+            workload, original_assignment, interval, f'{base}/assignment_{interval}.csv'))
+    
+    # Concatenate the assignments
+    print("Concatenating assignments")
     assignment = Assignment.concatenate(assignments)
-    assignment.write_csv(f"test/greedy/c{res}_p{procs}/assignment.csv")
+    assignment.write_csv(f'{base}/assignment.csv')
