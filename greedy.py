@@ -181,13 +181,15 @@ if __name__ == "__main__":
     else:
         batch = None
 
+    # Run the heuristic for each interval
+    os.makedirs(f'{base}/intervals', exist_ok=True)
     for interval in range(workload.intervals):
         if batch:
             # Skip if not in the batch
             if interval % total_batches != batch:
                 continue
         assignments.append(greed_heuristic(
-            workload, original_assignment, interval, pool_size, f'{base}/assignment_{interval}.csv'))
+            workload, original_assignment, interval, pool_size, f'{base}/intervals/{interval}.csv'))
     
     # Concatenate the assignments
     print("Concatenating assignments")
