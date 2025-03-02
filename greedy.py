@@ -7,8 +7,11 @@ Algorithms for the dynamic constrained reassignment problem:
 from workload import Workload
 from assignment import Assignment
 
-from typing import List, Tuple
+import os
+import multiprocessing
 import pandas as pd
+from typing import List, Tuple
+from functools import partial
 
 # Helper method to swap columns between two processors
 def swap_columns(
@@ -84,6 +87,7 @@ def greed_heuristic(
         workload: Workload,
         original_assignment: Assignment,
         interval: int = 0,
+        pool_size: int = 1,
         result_path: str = None
 ) -> Assignment:
     # Check if an assignment is already at the result path
@@ -115,19 +119,35 @@ def greed_heuristic(
     sorted_processors = sorted(
         range(original_assignment.processors), key=lambda x: processor_costs[x])
 
-    # pair the most costly and least costly processors and swap the columns between them
+    # prepare processor pairs based on sorted processor costs
+    tasks = []
+    pairs_index = []
     for i in range(len(sorted_processors) // 2):
-        print('Pairing processor ', sorted_processors[i], 'and processor ', sorted_processors[-i - 1], 'for interval', interval)
-        # run through minimization algorithm
-        set_A, set_B = swap_columns(processor_columns[sorted_processors[i]].items(), processor_columns[sorted_processors[-i - 1]].items())
-        # assign the columns to the processors
+        proc_a = sorted_processors[i]
+        proc_b = sorted_processors[-i - 1]
+        tasks.append((list(processor_columns[proc_a].items()),
+                      list(processor_columns[proc_b].items())))
+        pairs_index.append((proc_a, proc_b))
+
+    if pool_size == 1:
+        results = [swap_columns(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
+    else:
+        with multiprocessing.Pool(processes=pool_size) as pool:
+            results = pool.starmap(swap_columns, tasks)
+
+    # update assignments based on results using indices
+    for i in range(len(results)):
+        proc_a, proc_b = pairs_index[i]
+        set_A, set_B = results[i]
         for column in set_A:
-            assignments[column] = sorted_processors[i]
+            assignments[column] = proc_a
         for column in set_B:
-            assignments[column] = sorted_processors[-i - 1]
-        # update the processor costs
-        processor_costs[sorted_processors[i]] = sum(workload.workload.iloc[column, interval] for column in set_A)
-        processor_costs[sorted_processors[-i - 1]] = sum(workload.workload.iloc[column, interval] for column in set_B)
+            assignments[column] = proc_b
+
+    # compute updated costs for each processor
+    for proc in range(original_assignment.processors):
+        processor_costs[proc] = sum(workload.workload.iloc[col, interval] for col in processor_columns[proc])
+    
     # print the achieved result
     peak = max(processor_costs)
     trough = min(processor_costs)
@@ -142,8 +162,6 @@ def greed_heuristic(
 
 # If ran as main, test the heuristic
 if __name__ == "__main__":
-    import os  
-    from functools import partial
 
     # Test the heuristic at c24 resolution at 6 processors
     res = 24
@@ -157,8 +175,11 @@ if __name__ == "__main__":
 
     # Multiprocessing doesn't work quite well, use batching instead
     total_batches = 8
+    pool_size = 8
     if len(os.sys.argv) > 1:
         batch = int(os.sys.argv[1])
+    else:
+        batch = None
 
     for interval in range(workload.intervals):
         if batch:
@@ -166,7 +187,7 @@ if __name__ == "__main__":
             if interval % total_batches != batch:
                 continue
         assignments.append(greed_heuristic(
-            workload, original_assignment, interval, f'{base}/assignment_{interval}.csv'))
+            workload, original_assignment, interval, pool_size, f'{base}/assignment_{interval}.csv'))
     
     # Concatenate the assignments
     print("Concatenating assignments")
