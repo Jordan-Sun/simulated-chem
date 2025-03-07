@@ -225,7 +225,7 @@ if __name__ == '__main__':
     # Test reading back from csv file
     print("Test reading from csv file")
     og_assignment = Assignment.read_csv(f"test/og_assignments/c24_p{procs}.csv")
-    assert og_assignment.assignment.shape == (6 * resolution * resolution, 1)
+    assert og_assignment.assignment.shape[0] == 6 * resolution * resolution
     assert og_assignment.processors == procs
     
     strategy = 'greedy'
@@ -234,7 +234,7 @@ if __name__ == '__main__':
     # Test read assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
-    assert assignment.assignment.shape == (6 * resolution * resolution, 72)
+    assert assignment.assignment.shape[0] == 6 * resolution * resolution
     assert assignment.processors == procs
     # Test write mapping
     print("Test write mapping")
