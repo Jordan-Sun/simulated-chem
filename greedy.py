@@ -9,9 +9,11 @@ from assignment import Assignment
 
 import os
 import multiprocessing
+import numpy as np
 import pandas as pd
 from typing import List, Tuple
 from functools import partial
+
 import uuid
 
 
@@ -117,62 +119,51 @@ def greed_heuristic(
             print(f'Error {e} occurred while reading the assignment at {result_path} for interval {interval}')
     
     print(f'Starting interval {interval}')
-    # Pair the most costly and least costly processors# the cells on each processor
-    processor_columns = []
-    for _ in range(original_assignment.processors):
-        processor_columns.append({})
-    # the costs of each processor
-    processor_costs = [0] * original_assignment.processors
-    # the list of assignments
-    assignments = [-1] * workload.samples
-    # compute the costs of each processor given the original assignment
-    for column in range(workload.samples):
-        processor_columns[original_assignment.assignment['KppRank'][column]
-                          ][column] = workload.workload.iloc[column, interval]
-        processor_costs[original_assignment.assignment['KppRank'][column]] += workload.workload.iloc[column, interval]
-    # sorted costs of processors
-    sorted_processors = sorted(
-        range(original_assignment.processors), key=lambda x: processor_costs[x])
-
-    # prepare processor pairs based on sorted processor costs
+    # Use numpy to avoid per-column loops
+    assignment_ranks = original_assignment.assignment['KppRank'].to_numpy()
+    workload_interval = workload.workload.iloc[:, interval].to_numpy()
+    processor_costs = np.bincount(assignment_ranks, weights=workload_interval, minlength=original_assignment.processors)
+    processor_columns = {proc: list(zip(np.nonzero(assignment_ranks == proc)[0],
+                                        workload_interval[assignment_ranks == proc]))
+                         for proc in range(original_assignment.processors)}
+    
+    sorted_processors = np.argsort(processor_costs)
+    
+    # prepare processor pairs based on sorted costs
     tasks = []
     pairs_index = []
-    for i in range(len(sorted_processors) // 2):
+    half = len(sorted_processors) // 2
+    for i in range(half):
         proc_a = sorted_processors[i]
         proc_b = sorted_processors[-i - 1]
-        tasks.append((list(processor_columns[proc_a].items()),
-                      list(processor_columns[proc_b].items())))
+        tasks.append((processor_columns[proc_a], processor_columns[proc_b]))
         pairs_index.append((proc_a, proc_b))
-
+    
+    assignments = np.full(workload.samples, -1, dtype=int)
     if pool_size == 1:
         results = [swap_columns(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
     else:
         with multiprocessing.Pool(processes=pool_size) as pool:
             results = pool.starmap(swap_columns, tasks)
-
+    
     # update assignments based on results using indices
     for i in range(len(results)):
         proc_a, proc_b = pairs_index[i]
         set_A, set_B = results[i]
-        for column in set_A:
-            assignments[column] = proc_a
-        for column in set_B:
-            assignments[column] = proc_b
-
-    # compute updated costs for each processor
-    for proc in range(original_assignment.processors):
-        processor_costs[proc] = sum(workload.workload.iloc[col, interval] for col in processor_columns[proc])
+        for col in set_A:
+            assignments[col] = proc_a
+        for col in set_B:
+            assignments[col] = proc_b
     
-    # print the achieved result
-    peak = max(processor_costs)
-    trough = min(processor_costs)
+    # compute updated costs using numpy grouping
+    updated_costs = np.bincount(assignments, weights=workload_interval, minlength=original_assignment.processors)
+    peak = updated_costs.max()
+    trough = updated_costs.min()
     print(f"Interval {interval} diff: {peak} - {trough} = {peak - trough}")
-
-    # write the assignment to the result path
+    
     if result_path is not None:
         Assignment(pd.DataFrame(assignments, columns=['KppRank'])).write_csv(result_path)
-    # return the assignments
-    return Assignment(pd.DataFrame(assignments, columns=[interval]))
+    return Assignment(pd.DataFrame(assignments, columns=['KppRank']))
 
 
 # If ran as main, test the heuristic
