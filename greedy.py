@@ -14,19 +14,99 @@ import pandas as pd
 from typing import List, Tuple
 from functools import partial
 
-
-# Helper method to swap columns between two processors
-def swap_columns(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+# Helper method to swap columns between two processors with greedy heuristic
+def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Updated swap_columns that expects setA and setB as numpy arrays of shape (N,2)
-    where first column is id and second column is integer value.
-    Returns two numpy arrays containing column ids for setA and setB respectively.
+    Sort both sets by the workload. Then repeatedly swap the most costly column from the higher cost set with the least costly column from the lower cost set until the costs of the higher cost set would be less than the lower cost set. When that happens, swap with the column that would minimize the difference between the costs as the last swap.
     """
     # Convert inputs if necessary
     if not isinstance(setA, np.ndarray):
         setA = np.array(setA, dtype=int)
+        print("Warning: setA was not a numpy array")
     if not isinstance(setB, np.ndarray):
         setB = np.array(setB, dtype=int)
+        print("Warning: setB was not a numpy array")
+    # Find the processor with the higher cost
+    costA = np.sum(setA[:,1])
+    costB = np.sum(setB[:,1])
+
+    # Sort high cost set in descending order
+    # Sort low cost set in ascending order
+    # Keep track of the indices of the sorted set
+    if costA > costB:
+        set_high = setA[setA[:, 1].argsort()[::-1]]
+        cost_high = costA
+        set_low = setB[setB[:, 1].argsort()]
+        cost_low = costB
+    else:
+        set_high = setB[setB[:, 1].argsort()[::-1]]
+        cost_high = costB
+        set_low = setA[setA[:, 1].argsort()]
+        cost_low = costA
+
+    # Greedy swap
+    swap_index = 0
+    ids_high = []
+    ids_low = []
+    while cost_high > cost_low:
+        # Swap the most costly column from the high cost set with the least costly column from the low cost set
+        # Update the costs
+        cost_high -= set_high[swap_index, 1]
+        cost_low += set_high[swap_index, 1]
+        # Update the indicies to be swapped
+        ids_high.append(set_low[swap_index, 0])
+        ids_low.append(set_high[swap_index, 0])
+        swap_index += 1
+
+    # Revert last swap
+    swap_index -= 1
+    cost_high += set_high[swap_index, 1]
+    cost_low -= set_high[swap_index, 1]
+    ids_high.pop()
+    ids_low.pop()
+
+    # Compute the difference between each remaining pair of columns
+    differences = np.zeros((set_high.shape[0] - swap_index, set_low.shape[0] - swap_index))
+    min_diff = np.inf
+    min_pair = None
+    for i in range(swap_index, set_high.shape[0]):
+        for j in range(swap_index, set_low.shape[0]):
+            differences[i - swap_index, j - swap_index] = abs((cost_high - cost_low) - (set_high[i, 1] - set_low[j, 1]))
+            if differences[i - swap_index, j - swap_index] < min_diff:
+                min_diff = differences[i - swap_index, j - swap_index]
+                min_pair = (i, j)
+    
+    # Fill in the remaining indicies
+    for i in range(swap_index, set_high.shape[0]):
+        if i != min_pair[0]:
+            ids_high.append(set_high[i, 0])
+        else:
+            ids_high.append(set_low[min_pair[1], 0])
+    for j in range(swap_index, set_low.shape[0]):
+        if j != min_pair[1]:
+            ids_low.append(set_low[j, 0])
+        else:
+            ids_low.append(set_high[min_pair[0], 0])
+
+    # Return the indicies of the columns to swap
+    if costA > costB:
+        return np.array(ids_high, dtype=int), np.array(ids_low, dtype=int)
+    else:
+        return np.array(ids_low, dtype=int), np.array(ids_high, dtype=int)
+
+
+# Helper method to swap columns between two processors with dynamic programming
+def dp_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Constructs an DP table that minimizes the absolute difference between the sums of the columns in setA and setB after swapping.
+    """
+    # Convert inputs if necessary
+    if not isinstance(setA, np.ndarray):
+        setA = np.array(setA, dtype=int)
+        print("Warning: setA was not a numpy array")
+    if not isinstance(setB, np.ndarray):
+        setB = np.array(setB, dtype=int)
+        print("Warning: setB was not a numpy array")
     
     N = setA.shape[0]
     # Vectorized difference computation
@@ -97,6 +177,7 @@ def greed_heuristic(
         original_assignment: Assignment,
         interval: int = 0,
         pool_size: int = 1,
+        swap_alg = dp_swap,
         result_path: str = None
 ) -> Assignment:
     # Check if an assignment is already at the result path
@@ -115,28 +196,25 @@ def greed_heuristic(
     assignment_ranks = original_assignment.assignment['KppRank'].to_numpy()
     workload_interval = workload.workload.iloc[:, interval].to_numpy()
     processor_costs = np.bincount(assignment_ranks, weights=workload_interval, minlength=original_assignment.processors)
-    processor_columns = {proc: list(zip(np.nonzero(assignment_ranks == proc)[0],
-                                        workload_interval[assignment_ranks == proc]))
+    processor_columns = {proc: np.column_stack((np.nonzero(assignment_ranks == proc)[0],
+                                                workload_interval[assignment_ranks == proc]))
                          for proc in range(original_assignment.processors)}
     
     sorted_processors = np.argsort(processor_costs)
     
     # prepare processor pairs based on sorted costs
-    tasks = []
-    pairs_index = []
     half = len(sorted_processors) // 2
-    for i in range(half):
-        proc_a = sorted_processors[i]
-        proc_b = sorted_processors[-i - 1]
-        tasks.append((processor_columns[proc_a], processor_columns[proc_b]))
-        pairs_index.append((proc_a, proc_b))
+    tasks = np.array([(processor_columns[sorted_processors[i]], processor_columns[sorted_processors[-i - 1]]) 
+                      for i in range(half)], dtype=object)
+    pairs_index = np.array([(sorted_processors[i], sorted_processors[-i - 1]) 
+                            for i in range(half)], dtype=int)
     
     assignments = np.full(workload.samples, -1, dtype=int)
     if pool_size == 1:
-        results = [swap_columns(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
+        results = [swap_alg(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
     else:
         with multiprocessing.Pool(processes=pool_size) as pool:
-            results = pool.starmap(swap_columns, tasks)
+            results = pool.starmap(swap_alg, tasks)
     
     # update assignments based on results using indices
     for i in range(len(results)):
@@ -160,34 +238,27 @@ def greed_heuristic(
 
 # If ran as main, test the heuristic
 if __name__ == "__main__":
-
-    # Test the heuristic at c24 resolution at 6 processors
+    # Configuration
     res = 48
-    workload = Workload.read_csv(f"test/workloads/c{res}.csv")
     procs = 36
+    swap_alg_name = "greedy"
+    swap_alg = greedy_swap
+
+    # Test the heuristic at res and procs
+    workload = Workload.read_csv(f"test/workloads/c{res}.csv")
     original_assignment = Assignment.read_csv(
         f"test/og_assignments/c{res}_p{procs}.csv")
-    base = f"test/greedy/c{res}_p{procs}"
+
+    base = f"test/{swap_alg_name}/c{res}_p{procs}"
     os.makedirs(base, exist_ok=True)
     assignments = []
 
-    # Multiprocessing doesn't work quite well, use batching instead
-    total_batches = 8
     pool_size = 8
-    if len(os.sys.argv) > 1:
-        batch = int(os.sys.argv[1])
-    else:
-        batch = None
 
     # Run the heuristic for each interval
     os.makedirs(f'{base}/intervals', exist_ok=True)
     for interval in range(workload.intervals):
-        if batch:
-            # Skip if not in the batch
-            if interval % total_batches != batch:
-                continue
-        assignments.append(greed_heuristic(
-            workload, original_assignment, interval, pool_size, f'{base}/intervals/{interval}.csv'))
+        assignments.append(greed_heuristic(workload, original_assignment, interval, pool_size, swap_alg, f'{base}/intervals/interval_{interval}'))
     
     # Concatenate the assignments
     print("Concatenating assignments")
