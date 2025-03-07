@@ -68,6 +68,7 @@ class Assignment:
             self.intervals)] for _ in range(self.processors)]
         # Iterate over the intervals
         for interval in range(self.intervals):
+            print(f'Processing interval {interval}/{self.intervals}', end='\r')
             # Reset the index counter for each interval
             index_counter = [0 for _ in range(self.processors)]
             # Iterate over the samples
@@ -83,6 +84,7 @@ class Assignment:
                     sources[target][interval] = source
                     targets[source][interval] = target
                     mapping[source][interval].append(index_counter[source])
+        print()
         # Write the mapping to the directory
         for processor in range(self.processors):
             with open(os.path.join(directory, f"rank_{processor}.csv"), 'w') as f:
@@ -112,13 +114,14 @@ class Assignment:
             f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Max,Mean,SD,CV\n")
         # Iterate over the intervals of the workload if static
         if static:
-            intervals = range(workload.intervals)
+            n_intervals = workload.intervals
         # Iterate over the intervals of the assignment if not static
         else:
-            intervals = range(self.intervals)
+            n_intervals = self.intervals
 
+        intervals = range(n_intervals)
         for interval in intervals:
-            print(f'Simulation interval {interval}/{intervals}', end='\r')
+            print(f'Simulation interval {interval}/{n_intervals}', end='\r')
             # Store the workload for each processor in a list
             L_int = [0 for _ in range(self.processors)]
             # Iterate over the samples
@@ -162,6 +165,7 @@ class Assignment:
             g.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total,Max\n")
         # Iterate over the intervals
         for interval in range(self.intervals):
+            print(f'Movement interval {interval}/{self.intervals}', end='\r')
             # Store the samples sent and received for each processor in a list
             S_int = [0 for _ in range(self.processors)]
             R_int = [0 for _ in range(self.processors)]
@@ -207,6 +211,7 @@ class Assignment:
                 f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{sum(S_int)},{max(S_int)}\n")
             if recv_log is not None:
                 g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{sum(R_int)},{max(R_int)}\n")
+        print()
         # Write the total and max samples sent and received to the log files
         if send_log is not None:
             f.write(f"Total,{S_sum},Max,{S_max}\n")
@@ -229,13 +234,13 @@ if __name__ == '__main__':
     og_assignment = Assignment.read_csv(f"test/og_assignments/c{resolution}_p{procs}.csv")
     assert og_assignment.assignment.shape[0] == 6 * resolution * resolution
     assert og_assignment.processors == procs
-    # Test simulate
-    print("Test simulate")
-    L = og_assignment.simulate(workload, True, f"test/og_assignments/c{resolution}_p{procs}_simulation.csv")
-    print(L)
+    # # Test simulate
+    # print("Test simulate")
+    # L = og_assignment.simulate(workload, True, f"test/og_assignments/c{resolution}_p{procs}_simulation.csv")
+    # print(L)
     
-    # strategy = 'greedy'
-    strategy = None
+    strategy = 'greedy'
+    # strategy = None
     if strategy is not None:
         print(f"Testing c{resolution} p{procs} {strategy}")
         test_path = f"test/{strategy}/c{resolution}_p{procs}"
