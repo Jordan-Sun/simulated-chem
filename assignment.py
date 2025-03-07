@@ -118,6 +118,7 @@ class Assignment:
             intervals = range(self.intervals)
 
         for interval in intervals:
+            print(f'Simulation interval {interval}/{intervals}', end='\r')
             # Store the workload for each processor in a list
             L_int = [0 for _ in range(self.processors)]
             # Iterate over the samples
@@ -139,6 +140,7 @@ class Assignment:
             # Write the interval workload to the log file
             if sim_log is not None:
                 f.write(f"{interval}," + ",".join([str(L) for L in L_int]) + f",{max_L},{mean_L},{std_L},{cv_L}\n")
+        print()
         # Write the total workload to the log file
         if sim_log is not None:
             f.write(f"Total,{L_sim}\n")
@@ -219,31 +221,37 @@ if __name__ == '__main__':
     procs = 36
 
     # Read the workload
-    workload = Workload.read_csv("test/workloads/c{resolution}.csv")
+    workload = Workload.read_csv(f"test/workloads/c{resolution}.csv")
 
     print(f"Testing c{resolution} p{procs} original")
     # Test reading back from csv file
     print("Test reading from csv file")
-    og_assignment = Assignment.read_csv(f"test/og_assignments/c24_p{procs}.csv")
+    og_assignment = Assignment.read_csv(f"test/og_assignments/c{resolution}_p{procs}.csv")
     assert og_assignment.assignment.shape[0] == 6 * resolution * resolution
     assert og_assignment.processors == procs
-    
-    strategy = 'greedy'
-    print(f"Testing c{resolution} p{procs} {strategy}")
-    test_path = f"test/{strategy}/c{resolution}_p{procs}"
-    # Test read assignment
-    print("Test reading from csv file")
-    assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
-    assert assignment.assignment.shape[0] == 6 * resolution * resolution
-    assert assignment.processors == procs
-    # Test write mapping
-    print("Test write mapping")
-    assignment.write_mapping(og_assignment, f"{test_path}/mappings")
     # Test simulate
     print("Test simulate")
-    L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
+    L = og_assignment.simulate(workload, True, f"test/og_assignments/c{resolution}_p{procs}_simulation.csv")
     print(L)
-    # Test movement
-    print("Test movement")
-    S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
-    print(S_sum, R_sum, S_max, R_max)
+    
+    # strategy = 'greedy'
+    strategy = None
+    if strategy is not None:
+        print(f"Testing c{resolution} p{procs} {strategy}")
+        test_path = f"test/{strategy}/c{resolution}_p{procs}"
+        # Test read assignment
+        print("Test reading from csv file")
+        assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
+        assert assignment.assignment.shape[0] == 6 * resolution * resolution
+        assert assignment.processors == procs
+        # Test write mapping
+        print("Test write mapping")
+        assignment.write_mapping(og_assignment, f"{test_path}/mappings")
+        # Test simulate
+        print("Test simulate")
+        L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
+        print(L)
+        # Test movement
+        print("Test movement")
+        S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+        print(S_sum, R_sum, S_max, R_max)
