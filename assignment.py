@@ -24,7 +24,7 @@ class Assignment:
             self.processors = np.max(self.assignment.values) + 1
             # Throw an error if the number of processors is not a multiple of six
             if self.processors % 6 != 0:
-                raise ValueError("The number of processors must be a multiple of six")
+                raise ValueError(f'Expected number of processors to be a multiple of 6, got {self.processors}.')
 
     # Concatenates a list of assignments into a single assignment
     @staticmethod
@@ -215,45 +215,26 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
+    resolution = 48
+    procs = 36
+
     # Read the workload
-    workload = Workload.read_csv("test/workloads/c24.csv")
+    workload = Workload.read_csv("test/workloads/c{resolution}.csv")
 
-    # # Test reading from nc4 file
-    # assignment = Assignment.read_nc4("test/kpp_diags/GEOSChem.KppDiags.20190701_0000z.nc4")
-    # print(assignment.assignment)
-    # print(assignment.processors)
-
-    # print("Testing c24 p24 original")
-    # # Test reading from csv file
-    # print("Test reading from csv file")
-    # og_assignment = Assignment.read_csv(
-    #     "test/og_assignments/c24_p24.csv")
-    # assert og_assignment.assignment.shape == (3456, 1)
-    # assert og_assignment.processors == 24
-    # # Test simulate
-    # print("Test simulate")
-    # L = og_assignment.simulate(workload, True, "test/og_assignments/c24_p24_simulation.csv")
-    # print(L)
-
-    procs = 6
-    print(f"Testing c24 p{procs} original")
+    print(f"Testing c{resolution} p{procs} original")
     # Test reading back from csv file
     print("Test reading from csv file")
     og_assignment = Assignment.read_csv(f"test/og_assignments/c24_p{procs}.csv")
-    assert og_assignment.assignment.shape == (3456, 1)
+    assert og_assignment.assignment.shape == (6 * resolution * resolution, 1)
     assert og_assignment.processors == procs
-    # # Test simulate
-    # print("Test simulate")
-    # L = og_assignment.simulate(
-    #     workload, True, f"test/og_assignments/c24_p{procs}_simulation.csv")
-    # print(L)
     
-    print(f"Testing c24 p{procs} greedy")
-    test_path = f"test/greedy/c24_p{procs}"
+    strategy = 'greedy'
+    print(f"Testing c{resolution} p{procs} {strategy}")
+    test_path = f"test/{strategy}/c{resolution}_p{procs}"
     # Test read assignment
     print("Test reading from csv file")
     assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
-    assert assignment.assignment.shape == (3456, 72)
+    assert assignment.assignment.shape == (6 * resolution * resolution, 72)
     assert assignment.processors == procs
     # Test write mapping
     print("Test write mapping")

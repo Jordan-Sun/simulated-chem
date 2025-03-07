@@ -12,11 +12,18 @@ import multiprocessing
 import pandas as pd
 from typing import List, Tuple
 from functools import partial
+import uuid
+
 
 # Helper method to swap columns between two processors
 def swap_columns(
         setA: List[Tuple[int, int]], setB: List[Tuple[int, int]]
 ) -> Tuple[List[int], List[int]]:
+    
+    function_uuid = uuid.uuid4()
+    # Print work progress
+    print(f'{function_uuid}: Initializing swap_columns')
+
     # Convert to pairs
     N = len(setA)
     pairs = list(zip(setA, setB))  # Each pair is ((idA, valA), (idB, valB))
@@ -35,6 +42,8 @@ def swap_columns(
     dp = [{} for _ in range(N + 1)]  # dp[i][s] = (prev_s, choice)
     dp[0][0] = None  # Starting point
 
+    print(f'{function_uuid}: Building DP table')
+
     # Build the DP table
     for i in range(1, N + 1):
         di = differences[i - 1]
@@ -50,6 +59,8 @@ def swap_columns(
             if s_new_neg not in dp_i:
                 dp_i[s_new_neg] = (s, "-")
 
+    print(f'{function_uuid}: Finding minimal absolute sum')
+
     # Find the minimal absolute sum
     min_abs_sum = None
     target_s = None
@@ -58,6 +69,8 @@ def swap_columns(
         if min_abs_sum is None or abs_s < min_abs_sum:
             min_abs_sum = abs_s
             target_s = s
+
+    print(f'{function_uuid}: Reconstructing the solution')
 
     # Reconstruct the solution
     ids_setA = []
@@ -80,6 +93,8 @@ def swap_columns(
     ids_setA.reverse()
     ids_setB.reverse()
 
+    # Print work progress
+    print(f'{function_uuid}: Finished swap_columns')
     return ids_setA, ids_setB
 
 # Greedy one-to-one dynamic reassignment solution through greedy heuristic
@@ -164,9 +179,9 @@ def greed_heuristic(
 if __name__ == "__main__":
 
     # Test the heuristic at c24 resolution at 6 processors
-    res = 24
+    res = 48
     workload = Workload.read_csv(f"test/workloads/c{res}.csv")
-    procs = 6
+    procs = 36
     original_assignment = Assignment.read_csv(
         f"test/og_assignments/c{res}_p{procs}.csv")
     base = f"test/greedy/c{res}_p{procs}"
