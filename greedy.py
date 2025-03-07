@@ -14,89 +14,81 @@ import pandas as pd
 from typing import List, Tuple
 from functools import partial
 
-import uuid
-
 
 # Helper method to swap columns between two processors
-def swap_columns(
-        setA: List[Tuple[int, int]], setB: List[Tuple[int, int]]
-) -> Tuple[List[int], List[int]]:
+def swap_columns(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Updated swap_columns that expects setA and setB as numpy arrays of shape (N,2)
+    where first column is id and second column is integer value.
+    Returns two numpy arrays containing column ids for setA and setB respectively.
+    """
+    # Convert inputs if necessary
+    if not isinstance(setA, np.ndarray):
+        setA = np.array(setA, dtype=int)
+    if not isinstance(setB, np.ndarray):
+        setB = np.array(setB, dtype=int)
     
-    function_uuid = uuid.uuid4()
-    # Print work progress
-    print(f'{function_uuid}: Initializing swap_columns')
+    N = setA.shape[0]
+    # Vectorized difference computation
+    differences = setA[:,1] - setB[:,1]
+    total_diff = int(np.sum(np.abs(differences)))
+    offset = total_diff  # offset for DP array index
 
-    # Convert to pairs
-    N = len(setA)
-    pairs = list(zip(setA, setB))  # Each pair is ((idA, valA), (idB, valB))
+    # Initialize DP arrays
+    # dp_prev[i, j] stores the previous DP index (j index before adding current difference)
+    # dp_choice[i, j] stores +1 if plus was chosen or -1 for minus at step i.
+    magic_number = -9999  # arbitrary number to represent invalid state
+    dp_prev = np.full((N+1, 2*total_diff+1), magic_number, dtype=int)
+    dp_choice = np.zeros((N+1, 2*total_diff+1), dtype=int)
+    # Mark starting state (sum=0 mapped to index offset)
+    dp_prev[0, offset] = offset  
 
-    # Convert the float values to integers
-    differences = []
-    total_diff = 0
-    for (idA, valA), (idB, valB) in pairs:
-        valA_int = int(valA)
-        valB_int = int(valB)
-        diff = valA_int - valB_int
-        differences.append(diff)
-        total_diff += abs(diff)
+    # DP loop: state index ranges 0 to 2*total_diff (with offset representing 0)
+    for i in range(1, N+1):
+        di = int(differences[i-1])
+        for j in range(2*total_diff+1):
+            if dp_prev[i-1, j] != magic_number:
+                # Option 1: choose plus: new sum = (j - offset) + di
+                new_idx = j + di
+                if 0 <= new_idx < 2*total_diff+1 and dp_prev[i, new_idx] == magic_number:
+                    dp_prev[i, new_idx] = j
+                    dp_choice[i, new_idx] = 1  # plus chosen
 
-    # Initialize the DP table
-    dp = [{} for _ in range(N + 1)]  # dp[i][s] = (prev_s, choice)
-    dp[0][0] = None  # Starting point
+                # Option 2: choose minus: new sum = (j - offset) - di
+                new_idx = j - di
+                if 0 <= new_idx < 2*total_diff+1 and dp_prev[i, new_idx] == magic_number:
+                    dp_prev[i, new_idx] = j
+                    dp_choice[i, new_idx] = -1  # minus chosen
 
-    print(f'{function_uuid}: Building DP table')
+    # Find final state with minimal absolute sum
+    best_idx = None
+    best_abs = None
+    for j in range(2*total_diff+1):
+        if dp_prev[N, j] != magic_number:
+            current_abs = abs(j - offset)
+            if best_abs is None or current_abs < best_abs:
+                best_abs = current_abs
+                best_idx = j
 
-    # Build the DP table
-    for i in range(1, N + 1):
-        di = differences[i - 1]
-        dp_i = dp[i]
-        dp_prev = dp[i - 1]
-        for s in dp_prev:
-            # Option 1: Assign di with +1 (valA to set A, valB to set B)
-            s_new = s + di
-            if s_new not in dp_i:
-                dp_i[s_new] = (s, "+")
-            # Option 2: Assign di with -1 (valA to set B, valB to set A)
-            s_new_neg = s - di
-            if s_new_neg not in dp_i:
-                dp_i[s_new_neg] = (s, "-")
-
-    print(f'{function_uuid}: Finding minimal absolute sum')
-
-    # Find the minimal absolute sum
-    min_abs_sum = None
-    target_s = None
-    for s in dp[N]:
-        abs_s = abs(s)
-        if min_abs_sum is None or abs_s < min_abs_sum:
-            min_abs_sum = abs_s
-            target_s = s
-
-    print(f'{function_uuid}: Reconstructing the solution')
-
-    # Reconstruct the solution
+    # Backtrack decisions
     ids_setA = []
     ids_setB = []
-    s = target_s
+    cur_idx = best_idx
     for i in range(N, 0, -1):
-        prev_s, sign = dp[i][s]
-        ((idA, valA), (idB, valB)) = pairs[i - 1]
-        if sign == "+":
-            # valA to set A, valB to set B
-            ids_setA.append(idA)
-            ids_setB.append(idB)
+        choice = dp_choice[i, cur_idx]
+        if choice == 1:
+            # plus: take setA's id to setA and setB's id to setB
+            ids_setA.append(setA[i-1, 0])
+            ids_setB.append(setB[i-1, 0])
         else:
-            # valA to set B, valB to set A
-            ids_setA.append(idB)
-            ids_setB.append(idA)
-        s = prev_s  # Move to the previous state
+            # minus: swap choices
+            ids_setA.append(setB[i-1, 0])
+            ids_setB.append(setA[i-1, 0])
+        cur_idx = dp_prev[i, cur_idx]  # back-pointer
 
-    # Reverse the IDs to correct the order
-    ids_setA.reverse()
-    ids_setB.reverse()
-
-    # Print work progress
-    print(f'{function_uuid}: Finished swap_columns')
+    # Reverse to restore order
+    ids_setA = np.array(ids_setA[::-1], dtype=int)
+    ids_setB = np.array(ids_setB[::-1], dtype=int)
     return ids_setA, ids_setB
 
 # Greedy one-to-one dynamic reassignment solution through greedy heuristic
