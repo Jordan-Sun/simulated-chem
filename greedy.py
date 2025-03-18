@@ -242,8 +242,8 @@ if __name__ == "__main__":
     # Configuration
     res = 48
     procs = 144
-    swap_alg_name = "greedy"
-    swap_alg = greedy_swap
+    swap_alg_name = "dp"
+    swap_alg = dp_swap
 
     # Test the heuristic at res and procs
     workload = Workload.read_csv(f"test/workloads/c{res}.csv")

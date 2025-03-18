@@ -68,7 +68,7 @@ class Assignment:
             self.intervals)] for _ in range(self.processors)]
         # Iterate over the intervals
         for interval in range(self.intervals):
-            print(f'Processing interval {interval}/{self.intervals}', end='\r')
+            print(f'Processing interval {interval + 1}/{self.intervals}', end='\r')
             # Reset the index counter for each interval
             index_counter = [0 for _ in range(self.processors)]
             # Iterate over the samples
@@ -121,7 +121,7 @@ class Assignment:
 
         intervals = range(n_intervals)
         for interval in intervals:
-            print(f'Simulation interval {interval}/{n_intervals}', end='\r')
+            print(f'Simulation interval {interval + 1}/{n_intervals}', end='\r')
             # Store the workload for each processor in a list
             L_int = [0 for _ in range(self.processors)]
             # Iterate over the samples
@@ -165,7 +165,7 @@ class Assignment:
             g.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total,Max\n")
         # Iterate over the intervals
         for interval in range(self.intervals):
-            print(f'Movement interval {interval}/{self.intervals}', end='\r')
+            print(f'Movement interval {interval + 1}/{self.intervals}', end='\r')
             # Store the samples sent and received for each processor in a list
             S_int = [0 for _ in range(self.processors)]
             R_int = [0 for _ in range(self.processors)]
@@ -223,7 +223,7 @@ class Assignment:
 # If ran as main, test the assignment class
 if __name__ == '__main__':
     resolution = 48
-    procs = 36
+    procs = 144
 
     # Read the workload
     workload = Workload.read_csv(f"test/workloads/c{resolution}.csv")
