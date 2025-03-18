@@ -59,11 +59,12 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndar
         swap_index += 1
 
     # Revert last swap
-    swap_index -= 1
-    cost_high += set_high[swap_index, 1]
-    cost_low -= set_high[swap_index, 1]
-    ids_high.pop()
-    ids_low.pop()
+    if swap_index > 0:
+        swap_index -= 1
+        cost_high += set_high[swap_index, 1]
+        cost_low -= set_high[swap_index, 1]
+        ids_high.pop()
+        ids_low.pop()
 
     # Compute the difference between each remaining pair of columns
     differences = np.zeros((set_high.shape[0] - swap_index, set_low.shape[0] - swap_index))
@@ -240,7 +241,7 @@ def greed_heuristic(
 if __name__ == "__main__":
     # Configuration
     res = 48
-    procs = 36
+    procs = 144
     swap_alg_name = "greedy"
     swap_alg = greedy_swap
 
