@@ -223,7 +223,7 @@ class Assignment:
 # If ran as main, test the assignment class
 if __name__ == '__main__':
     resolution = 48
-    procs = 144
+    procs = 576
 
     # Read the workload
     workload = Workload.read_csv(f"test/workloads/c{resolution}.csv")
@@ -239,7 +239,7 @@ if __name__ == '__main__':
     # L = og_assignment.simulate(workload, True, f"test/og_assignments/c{resolution}_p{procs}_simulation.csv")
     # print(L)
     
-    strategy = 'greedy'
+    strategy = None
     # strategy = None
     if strategy is not None:
         print(f"Testing c{resolution} p{procs} {strategy}")

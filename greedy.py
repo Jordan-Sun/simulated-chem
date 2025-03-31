@@ -241,9 +241,16 @@ def greed_heuristic(
 if __name__ == "__main__":
     # Configuration
     res = 48
-    procs = 144
+    procs = 576
     swap_alg_name = "dp"
-    swap_alg = dp_swap
+
+    if swap_alg_name == "greedy":
+        swap_alg = greedy_swap
+    elif swap_alg_name == "dp":
+        swap_alg = dp_swap
+    else:
+        print("Invalid swap algorithm")
+        exit(1)
 
     # Test the heuristic at res and procs
     workload = Workload.read_csv(f"test/workloads/c{res}.csv")

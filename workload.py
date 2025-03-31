@@ -89,15 +89,10 @@ class Workload:
 
 # If ran as main, test the workload class
 if __name__ == "__main__":
-    # # Test reading from nc4 file
-    # workload = Workload.read_nc4_file("test/kpp_diags/GEOSChem.KppDiags.20190701_0000z.nc4")
-    # print(workload.workload)
-    # # Test reading from nc4 directory
-    # workload = Workload.read_nc4_dir("test/kpp_diags")  
-    # print(workload.workload)
     # Test reading from csv file
-    workload = Workload.read_csv("test/workloads/c24.csv")
+    workload = Workload.read_csv("test/workloads/c48.csv")
     print(workload.workload)
     # Test computing lower bound
-    print(workload.lower_bound(6))
-    print(workload.lower_bound(24, [0]))
+    print(workload.lower_bound(36))
+    print(workload.lower_bound(144))
+    print(workload.lower_bound(576))
