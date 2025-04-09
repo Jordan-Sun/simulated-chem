@@ -236,12 +236,80 @@ def greed_heuristic(
         Assignment(pd.DataFrame(assignments, columns=['KppRank'])).write_csv(result_path)
     return Assignment(pd.DataFrame(assignments, columns=['KppRank']))
 
+# Greedy heuristic but limit the swap to between local processors
+def greed_heuristic_local(
+        workload: Workload,
+        original_assignment: Assignment,
+        interval: int = 0,
+        pool_size: int = 1,
+        swap_alg = dp_swap,
+        result_path: str = None
+) -> Assignment:
+    # Check if an assignment is already at the result path
+    if result_path is not None:
+        try:
+            assignment = Assignment.read_csv(result_path)
+            print(f'Skipping interval {interval}')
+            return assignment
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print(f'Error {e} occurred while reading the assignment at {result_path} for interval {interval}')
+
+    print(f'Starting interval {interval}')
+    # Use numpy to avoid per-column loops
+    assignment_ranks = original_assignment.assignment['KppRank'].to_numpy()
+    workload_interval = workload.workload.iloc[:, interval].to_numpy()
+
+    assignments = np.full(workload.samples, -1, dtype=int)
+
+    for group in original_assignment.processor_groups:
+        processor_costs = np.bincount(assignment_ranks, weights=workload_interval, minlength=original_assignment.processors)
+        processor_columns = {proc: np.column_stack((np.nonzero(assignment_ranks == proc)[0],
+                                                    workload_interval[assignment_ranks == proc]))
+                             for proc in group}
+
+        sorted_processors = sorted(group, key=lambda proc: processor_costs[proc])
+
+        # prepare processor pairs based on sorted costs
+        half = len(sorted_processors) // 2
+        tasks = np.array([(processor_columns[sorted_processors[i]], processor_columns[sorted_processors[-i - 1]]) 
+                          for i in range(half)], dtype=object)
+        pairs_index = np.array([(sorted_processors[i], sorted_processors[-i - 1]) 
+                                for i in range(half)], dtype=int)
+
+        if pool_size == 1:
+            results = [swap_alg(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
+        else:
+            with multiprocessing.Pool(processes=pool_size) as pool:
+                results = pool.starmap(swap_alg, tasks)
+
+        # update assignments based on results using indices
+        for i in range(len(results)):
+            proc_a, proc_b = pairs_index[i]
+            set_A, set_B = results[i]
+            for col in set_A:
+                assignments[col] = proc_a
+            for col in set_B:
+                assignments[col] = proc_b
+
+    # compute updated costs using numpy grouping
+    updated_costs = np.bincount(assignments, weights=workload_interval, minlength=original_assignment.processors)
+    peak = updated_costs.max()
+    trough = updated_costs.min()
+    print(f"Interval {interval} diff: {peak} - {trough} = {peak - trough}")
+
+    if result_path is not None:
+        Assignment(pd.DataFrame(assignments, columns=['KppRank'])).write_csv(result_path)
+    return Assignment(pd.DataFrame(assignments, columns=['KppRank']))
 
 # If ran as main, test the heuristic
 if __name__ == "__main__":
     # Configuration
     res = 48
-    procs = 576
+    hosts = 4
+    ptile = 36
+    procs = hosts * ptile
     swap_alg_name = "dp"
 
     if swap_alg_name == "greedy":
@@ -256,8 +324,10 @@ if __name__ == "__main__":
     workload = Workload.read_csv(f"test/workloads/c{res}.csv")
     original_assignment = Assignment.read_csv(
         f"test/og_assignments/c{res}_p{procs}.csv")
+    original_assignment.set_processor_groups(hosts, ptile)
 
-    base = f"test/{swap_alg_name}/c{res}_p{procs}"
+    # base = f"test/{swap_alg_name}/c{res}_p{procs}"
+    base = f"test/{swap_alg_name}/c{res}_p{procs}_local"
     os.makedirs(base, exist_ok=True)
     assignments = []
 
@@ -266,7 +336,8 @@ if __name__ == "__main__":
     # Run the heuristic for each interval
     os.makedirs(f'{base}/intervals', exist_ok=True)
     for interval in range(workload.intervals):
-        assignments.append(greed_heuristic(workload, original_assignment, interval, pool_size, swap_alg, f'{base}/intervals/interval_{interval}'))
+        # assignments.append(greed_heuristic(workload, original_assignment, interval, pool_size, swap_alg, f'{base}/intervals/interval_{interval}'))
+        assignments.append(greed_heuristic_local(workload, original_assignment, interval, pool_size, swap_alg, f'{base}/intervals/interval_{interval}'))
     
     # Concatenate the assignments
     print("Concatenating assignments")

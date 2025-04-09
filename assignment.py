@@ -15,6 +15,7 @@ class Assignment:
     samples: int = field(init=False, default=0)
     intervals: int = field(init=False, default=0)
     processors: int = field(init=False, default=0)
+    processor_groups: list[list[int]] = field(init=False, default_factory=list)
 
     def __post_init__(self):
         if self.assignment is not None:
@@ -25,6 +26,19 @@ class Assignment:
             # Throw an error if the number of processors is not a multiple of six
             if self.processors % 6 != 0:
                 raise ValueError(f'Expected number of processors to be a multiple of 6, got {self.processors}.')
+
+            # Default processor group: all processors in one group
+            self.processor_groups = [list(range(self.processors))]
+
+    # Method to set processor groups based on the number of hosts and processors per host
+    def set_processor_groups(self, num_hosts: int, processors_per_host: int):
+        if self.processors != num_hosts * processors_per_host:
+            raise ValueError(f"Total processors ({self.processors}) must equal num_hosts ({num_hosts}) * processors_per_host ({processors_per_host}).")
+
+        self.processor_groups = [
+            list(range(i * processors_per_host, (i + 1) * processors_per_host))
+            for i in range(num_hosts)
+        ]
 
     # Concatenates a list of assignments into a single assignment
     @staticmethod
