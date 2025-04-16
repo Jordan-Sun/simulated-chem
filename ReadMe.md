@@ -14,12 +14,12 @@ Each column represents the work within an interval, and each row represent the w
 The number of KPP steps serves as a good estimate for the workload, you can obtain it by enabling `KppDiag` and setting the duration and frequency to match that of the Chemistry module (20 minutes by default).
 The Kpp Diagnostic outputs can then be converted into workload through the `read_nc4_dir` function in `Workload`.
 
-You can write it out as a workload file using the `write_csv` function in `Workload`, and reuse workload file for reassignments for the same resolution.
+You can write it out as a workload file using the `write_csv` function in `Workload`, and reuse workload file for reassignments for the same resolution. The workload for the first 7 days of `c24` and `c48` resolution are included in the repo as an example.
 
 ### Original assignment file
 The original assignment file stores how GEOS-Chem originally assigns columns. You can obtain it by reading any one of the Kpp Diagnostic output file through the `read_nc4` function in `Assignment`.
 
-You can write it out as an assignment file using the `write_csv` function in `Assignment`, and reuse assignment file for reassignments for the same resolution and number of processors.
+You can write it out as an assignment file using the `write_csv` function in `Assignment`, and reuse assignment file for reassignments for the same resolution and number of processors. The original assignment for 6 and 24 processors at `c24` resolution, as well as 36, 144, and 576 processors at `c48` resolution, are included in the repo as an example.
 
 # Usage
 ## Generating a load balanced assignment
