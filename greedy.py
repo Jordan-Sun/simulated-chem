@@ -8,11 +8,12 @@ from workload import Workload
 from assignment import Assignment
 
 import os
-import multiprocessing
 import numpy as np
 import pandas as pd
 from typing import List, Tuple
 from functools import partial
+
+# import time
 
 # Helper method to swap columns between two processors with greedy heuristic
 def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -33,6 +34,7 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndar
     # Sort high cost set in descending order
     # Sort low cost set in ascending order
     # Keep track of the indices of the sorted set
+
     if costA > costB:
         set_high = setA[setA[:, 1].argsort()[::-1]]
         cost_high = costA
@@ -177,7 +179,6 @@ def greed_heuristic(
         workload: Workload,
         original_assignment: Assignment,
         interval: int = 0,
-        pool_size: int = 1,
         swap_alg = dp_swap,
         result_path: str = None
 ) -> Assignment:
@@ -211,11 +212,8 @@ def greed_heuristic(
                             for i in range(half)], dtype=int)
     
     assignments = np.full(workload.samples, -1, dtype=int)
-    if pool_size == 1:
-        results = [swap_alg(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
-    else:
-        with multiprocessing.Pool(processes=pool_size) as pool:
-            results = pool.starmap(swap_alg, tasks)
+    
+    results = [swap_alg(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
     
     # update assignments based on results using indices
     for i in range(len(results)):
@@ -241,7 +239,6 @@ def greed_heuristic_local(
         workload: Workload,
         original_assignment: Assignment,
         interval: int = 0,
-        pool_size: int = 1,
         swap_alg = dp_swap,
         result_path: str = None
 ) -> Assignment:
@@ -278,11 +275,7 @@ def greed_heuristic_local(
         pairs_index = np.array([(sorted_processors[i], sorted_processors[-i - 1]) 
                                 for i in range(half)], dtype=int)
 
-        if pool_size == 1:
-            results = [swap_alg(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
-        else:
-            with multiprocessing.Pool(processes=pool_size) as pool:
-                results = pool.starmap(swap_alg, tasks)
+        results = [swap_alg(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
 
         # update assignments based on results using indices
         for i in range(len(results)):
@@ -309,8 +302,10 @@ if __name__ == "__main__":
     res = 48
     hosts = 4
     ptile = 36
+    pool_size = 8
+    swap_alg_name = "greedy"
+
     procs = hosts * ptile
-    swap_alg_name = "dp"
 
     if swap_alg_name == "greedy":
         swap_alg = greedy_swap
@@ -326,19 +321,26 @@ if __name__ == "__main__":
         f"test/og_assignments/c{res}_p{procs}.csv")
     original_assignment.set_processor_groups(hosts, ptile)
 
-    # base = f"test/{swap_alg_name}/c{res}_p{procs}"
-    base = f"test/{swap_alg_name}/c{res}_p{procs}_local"
+    base = f"test/{swap_alg_name}/c{res}_p{procs}"
     os.makedirs(base, exist_ok=True)
     assignments = []
 
-    pool_size = 8
+    # # Start timer
+    # start_time = time.time()
 
-    # Run the heuristic for each interval
-    os.makedirs(f'{base}/intervals', exist_ok=True)
+    # Total time: 81.52 seconds for single threaded.
+    # Run the heuristic for each interval, single threaded without saving
     for interval in range(workload.intervals):
-        # assignments.append(greed_heuristic(workload, original_assignment, interval, pool_size, swap_alg, f'{base}/intervals/interval_{interval}'))
-        assignments.append(greed_heuristic_local(workload, original_assignment, interval, pool_size, swap_alg, f'{base}/intervals/interval_{interval}'))
-    
+        assignments.append(
+            greed_heuristic_local(workload, original_assignment, interval, 1, swap_alg, f'{base}/assignment_{interval}.csv')
+        )
+
+    # # End timer
+    # end_time = time.time()
+    # # Print elapsed time
+    # elapsed_time = end_time - start_time
+    # print(f"Total time: {elapsed_time:.2f} seconds")
+
     # Concatenate the assignments
     print("Concatenating assignments")
     assignment = Assignment.concatenate(assignments)
