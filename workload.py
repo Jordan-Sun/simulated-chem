@@ -89,9 +89,11 @@ class Workload:
 
 # If ran as main, test the workload class
 if __name__ == "__main__":
-    # Test reading from csv file
-    workload = Workload.read_csv("test/workloads/c48.csv")
+    # Test reading from nc4 files
+    workload = Workload.read_nc4_dir('data')
     print(workload.workload)
+    # Write the workload to a csv file
+    workload.write_csv('workload.csv')
     # Test computing lower bound
     print(workload.lower_bound(36))
     print(workload.lower_bound(144))

@@ -302,8 +302,10 @@ if __name__ == "__main__":
     res = 48
     hosts = 4
     ptile = 36
-    pool_size = 8
     swap_alg_name = "greedy"
+
+    workload_base = "test/workloads/"
+    original_assignment_base = "test/og_assignments/"
 
     procs = hosts * ptile
 
@@ -316,9 +318,8 @@ if __name__ == "__main__":
         exit(1)
 
     # Test the heuristic at res and procs
-    workload = Workload.read_csv(f"test/workloads/c{res}.csv")
-    original_assignment = Assignment.read_csv(
-        f"test/og_assignments/c{res}_p{procs}.csv")
+    workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
+    original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
     original_assignment.set_processor_groups(hosts, ptile)
 
     base = f"test/{swap_alg_name}/c{res}_p{procs}"

@@ -8,6 +8,8 @@ import netCDF4 as nc
 import numpy as np
 import pandas as pd
 
+import time
+
 # Defines the assignment class, a dataclass to store the assignment matrix
 @dataclass
 class Assignment:
@@ -237,27 +239,34 @@ class Assignment:
 # If ran as main, test the assignment class
 if __name__ == '__main__':
     resolution = 48
-    procs = 576
+    procs = 144
+
+    workload_base = "test/workloads/"
+    og_assignment_base = "test/og_assignments/"
+    assignment_base = "test/"
+    strategy = "greedy"
 
     # Read the workload
-    workload = Workload.read_csv(f"test/workloads/c{resolution}.csv")
+    workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
 
     print(f"Testing c{resolution} p{procs} original")
     # Test reading back from csv file
     print("Test reading from csv file")
-    og_assignment = Assignment.read_csv(f"test/og_assignments/c{resolution}_p{procs}.csv")
+    og_assignment = Assignment.read_csv(
+        f"{og_assignment_base}/c{resolution}_p{procs}.csv"
+    )
     assert og_assignment.assignment.shape[0] == 6 * resolution * resolution
     assert og_assignment.processors == procs
     # # Test simulate
     # print("Test simulate")
-    # L = og_assignment.simulate(workload, True, f"test/og_assignments/c{resolution}_p{procs}_simulation.csv")
+    # L = og_assignment.simulate(
+    #     workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv"
+    # )
     # print(L)
-    
-    strategy = None
-    # strategy = None
+
     if strategy is not None:
         print(f"Testing c{resolution} p{procs} {strategy}")
-        test_path = f"test/{strategy}/c{resolution}_p{procs}"
+        test_path = f"{assignment_base}/{strategy}/c{resolution}_p{procs}"
         # Test read assignment
         print("Test reading from csv file")
         assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
@@ -265,7 +274,11 @@ if __name__ == '__main__':
         assert assignment.processors == procs
         # Test write mapping
         print("Test write mapping")
+        mapping_start = time.time()
         assignment.write_mapping(og_assignment, f"{test_path}/mappings")
+        mapping_end = time.time()
+        elapsed = mapping_end - mapping_start
+        print(f"Mapping time: {elapsed:.2f} seconds")
         # Test simulate
         print("Test simulate")
         L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
