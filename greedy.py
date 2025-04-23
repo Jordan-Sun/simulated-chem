@@ -299,9 +299,9 @@ def greed_heuristic_local(
 # If ran as main, test the heuristic
 if __name__ == "__main__":
     # Configuration
-    res = 48
+    res = 24
     hosts = 4
-    ptile = 36
+    ptile = 6
     swap_alg_name = "greedy"
 
     workload_base = "test/workloads/"
@@ -318,7 +318,8 @@ if __name__ == "__main__":
         exit(1)
 
     # Test the heuristic at res and procs
-    workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
+    # workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
+    workload = Workload.read_csv(f"{workload_base}/predict_14_2_1_c24.csv")
     original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
     original_assignment.set_processor_groups(hosts, ptile)
 
@@ -333,7 +334,7 @@ if __name__ == "__main__":
     # Run the heuristic for each interval, single threaded without saving
     for interval in range(workload.intervals):
         assignments.append(
-            greed_heuristic_local(workload, original_assignment, interval, 1, swap_alg, f'{base}/assignment_{interval}.csv')
+            greed_heuristic(workload, original_assignment, interval, swap_alg, f'{base}/intervals/interval_{interval}.csv')
         )
 
     # # End timer

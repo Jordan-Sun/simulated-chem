@@ -238,16 +238,17 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
-    resolution = 48
-    procs = 144
+    resolution = 24
+    procs = 24
 
     workload_base = "test/workloads/"
     og_assignment_base = "test/og_assignments/"
     assignment_base = "test/"
-    strategy = "greedy"
+    strategy = "greedy_predicted"
 
     # Read the workload
-    workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
+    # workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
+    workload = Workload.read_csv(f"{workload_base}/trimmed_14_2_1_c{resolution}.csv")
 
     print(f"Testing c{resolution} p{procs} original")
     # Test reading back from csv file
@@ -272,13 +273,13 @@ if __name__ == '__main__':
         assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
         assert assignment.assignment.shape[0] == 6 * resolution * resolution
         assert assignment.processors == procs
-        # Test write mapping
-        print("Test write mapping")
-        mapping_start = time.time()
-        assignment.write_mapping(og_assignment, f"{test_path}/mappings")
-        mapping_end = time.time()
-        elapsed = mapping_end - mapping_start
-        print(f"Mapping time: {elapsed:.2f} seconds")
+        # # Test write mapping
+        # print("Test write mapping")
+        # mapping_start = time.time()
+        # assignment.write_mapping(og_assignment, f"{test_path}/mappings")
+        # mapping_end = time.time()
+        # elapsed = mapping_end - mapping_start
+        # print(f"Mapping time: {elapsed:.2f} seconds")
         # Test simulate
         print("Test simulate")
         L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
