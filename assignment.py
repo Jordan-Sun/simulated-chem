@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass, field
 from typing import Tuple
 
-import netCDF4 as nc
 import numpy as np
 import pandas as pd
 
@@ -52,6 +51,8 @@ class Assignment:
     # Reads the assignment from a NC4 file
     @staticmethod
     def read_nc4(file_name: os.path) -> 'Assignment':
+        # Import netCDF4 only when needed
+        import netCDF4 as nc
         # Open the netcdf file
         with nc.Dataset(file_name, 'r') as f:
             # Read the KppRank variable

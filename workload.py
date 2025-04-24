@@ -1,5 +1,4 @@
 import os
-import netCDF4 as nc
 import numpy as np
 import pandas as pd
 
@@ -28,6 +27,7 @@ class Workload:
     # Reads raw workload from raw nc4 format to a numpy array
     @staticmethod
     def read_nc4(file_name: os.path) -> np.ndarray:
+        import netCDF4 as nc  # Import netCDF4 only when needed
         # Open the netcdf file
         with nc.Dataset(file_name, 'r') as f:
             # Read only the KppTotSteps variable
