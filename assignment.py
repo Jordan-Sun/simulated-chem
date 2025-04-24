@@ -121,19 +121,21 @@ class Assignment:
                     f.write("\n")
 
     # Simulates the assignment for a given workload
-    def simulate(self, workload: 'Workload', static: bool = False, sim_log: str = None) -> float:
+    def simulate(self, workload: 'Workload', static: bool = False, sim_log: str = None, n_intervals: int = None) -> int:
         # Initialize the simulated workload 
         L_sim = 0
         # Open the log file if it is provided
         if sim_log is not None:
             f = open(sim_log, 'w')
             f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Max,Mean,SD,CV\n")
-        # Iterate over the intervals of the workload if static
-        if static:
-            n_intervals = workload.intervals
-        # Iterate over the intervals of the assignment if not static
-        else:
-            n_intervals = self.intervals
+        # If the number of intervals is not given, use the number of intervals in the assignment
+        if n_intervals is None:
+            # Iterate over the intervals of the workload if static
+            if static:
+                n_intervals = workload.intervals
+            # Iterate over the intervals of the assignment if not static
+            else:
+                n_intervals = self.intervals
 
         intervals = range(n_intervals)
         for interval in intervals:
@@ -238,17 +240,16 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
-    resolution = 24
-    procs = 24
+    resolution = 48
+    procs = 36
 
-    workload_base = "test/workloads/"
-    og_assignment_base = "test/og_assignments/"
-    assignment_base = "test/"
-    strategy = "greedy_predicted"
+    workload_base = "test/workloads"
+    og_assignment_base = "test/og_assignments"
+    assignment_base = "test"
+    strategy = "greedy"
 
     # Read the workload
-    # workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
-    workload = Workload.read_csv(f"{workload_base}/trimmed_14_2_1_c{resolution}.csv")
+    workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
 
     print(f"Testing c{resolution} p{procs} original")
     # Test reading back from csv file
@@ -282,9 +283,9 @@ if __name__ == '__main__':
         # print(f"Mapping time: {elapsed:.2f} seconds")
         # Test simulate
         print("Test simulate")
-        L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
+        L = assignment.simulate(workload, False, f"{test_path}/simulation.csv", n_intervals=workload.intervals)
         print(L)
-        # Test movement
-        print("Test movement")
-        S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
-        print(S_sum, R_sum, S_max, R_max)
+        # # Test movement
+        # print("Test movement")
+        # S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+        # print(S_sum, R_sum, S_max, R_max)

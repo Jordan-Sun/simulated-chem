@@ -299,8 +299,8 @@ def greed_heuristic_local(
 # If ran as main, test the heuristic
 if __name__ == "__main__":
     # Configuration
-    res = 24
-    hosts = 4
+    res = 48
+    hosts = 6
     ptile = 6
     swap_alg_name = "greedy"
 
@@ -319,12 +319,13 @@ if __name__ == "__main__":
 
     # Test the heuristic at res and procs
     # workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
-    workload = Workload.read_csv(f"{workload_base}/predict_14_2_1_c24.csv")
+    workload = Workload.read_csv(f"{workload_base}/upscaled_c24_to_c48.csv")
     original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
     original_assignment.set_processor_groups(hosts, ptile)
 
-    base = f"test/{swap_alg_name}/c{res}_p{procs}"
+    base = f"test/{swap_alg_name}_upscale/c{res}_p{procs}"
     os.makedirs(base, exist_ok=True)
+    os.makedirs(f"{base}/intervals", exist_ok=True)
     assignments = []
 
     # # Start timer

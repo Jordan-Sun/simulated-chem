@@ -9,11 +9,21 @@ class Workload:
     def __init__(self, workload: pd.DataFrame = None):
         # Create a dataframe from the costs
         self.workload = workload
+        # Workload attributes
+        self.intervals = 0
+        self.samples = 0
+        self.resolution = 0
         # If the workload is not None
         if self.workload is not None:
             # The number of samples is the number of rows in the workload matrix
             # The number of intervals is the number of columns in the workload matrix
             self.samples, self.intervals = self.workload.shape
+            # The resolution is the square root of the number of samples divided by 6
+            self.resolution = np.sqrt(self.samples / 6)
+            # Make sure the resolution is an integer, else throw a warning
+            if self.resolution != int(self.resolution):
+                raise ValueError(f"Error: resolution {self.resolution} is not an integer")
+            self.resolution = int(self.resolution)
 
     # Reads raw workload from raw nc4 format to a numpy array
     @staticmethod
@@ -86,15 +96,42 @@ class Workload:
             L_bound += np.ceil(max(L_avg, w_max))
         return int(L_bound)
 
+    # Upscales the workload to a different resolution
+    def upscale(self, target_resolution: int) -> 'Workload':
+        # Calculate the scale factor
+        scale_factor = target_resolution / self.resolution
+        # Throw an error if the scale factor is not an integer
+        if scale_factor != int(scale_factor):
+            raise NotImplementedError(f"Error: non-integer scale factor {scale_factor} is not supported")
+        scale_factor = int(scale_factor)
+        # Reshape the workload matrix to 6 * res * res by intervals
+        reshaped_workload = self.workload.values.reshape(6, self.resolution, self.resolution, self.intervals)
+        # Duplicate the workloads to upscale
+        upscaled_workload = np.repeat(np.repeat(reshaped_workload, scale_factor, axis=1), scale_factor, axis=2)
+        # Reshape back to 6 * target_res * target_res by intervals
+        upscaled_workload = upscaled_workload.reshape(6 * target_resolution * target_resolution, self.intervals)
+        # Create a new Workload object from the upscaled workload, preserving column headers
+        return Workload(pd.DataFrame(upscaled_workload, columns=self.workload.columns))
+
 
 # If ran as main, test the workload class
 if __name__ == "__main__":
-    # Test reading from nc4 files
-    workload = Workload.read_nc4_dir('data')
-    print(workload.workload)
+    # # Test reading from nc4 files
+    # workload = Workload.read_nc4_dir('data')
+    # Upscale the workload to a different resolution
+    workload = Workload.read_csv('test/workloads/c24.csv')
+    upscaled_workload = workload.upscale(48)
     # Write the workload to a csv file
-    workload.write_csv('workload.csv')
+    upscaled_workload.write_csv("test/workloads/upscaled_c24_to_c48.csv")
+    # Read the actual workload from the file
+    workload = Workload.read_csv("test/workloads/c48.csv")
+    # Compute the difference between the upscaled workload and the actual workload
+    # Since the upscaled workload has less intervals than the actual workload, we need to slice the actual workload to match the upscaled workload
+    diff = workload.workload.iloc[:, :upscaled_workload.intervals] - upscaled_workload.workload
+    # Summarize the difference
+    print(diff.describe())
+    diff.describe().to_csv("summary.csv")
     # Test computing lower bound
-    print(workload.lower_bound(36))
-    print(workload.lower_bound(144))
-    print(workload.lower_bound(576))
+    # print(workload.lower_bound(36))
+    # print(workload.lower_bound(144))
+    # print(workload.lower_bound(576))
