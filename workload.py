@@ -2,6 +2,8 @@ import os
 import numpy as np
 import pandas as pd
 
+from scipy.ndimage import zoom
+
 # Defines the workload class
 class Workload:
     # Constructor
@@ -97,17 +99,13 @@ class Workload:
         return int(L_bound)
 
     # Upscales the workload to a different resolution
-    def upscale(self, target_resolution: int) -> 'Workload':
+    def upscale(self, target_resolution: int, order: int = 0) -> 'Workload':
         # Calculate the scale factor
         scale_factor = target_resolution / self.resolution
-        # Throw an error if the scale factor is not an integer
-        if scale_factor != int(scale_factor):
-            raise NotImplementedError(f"Error: non-integer scale factor {scale_factor} is not supported")
-        scale_factor = int(scale_factor)
         # Reshape the workload matrix to 6 * res * res by intervals
         reshaped_workload = self.workload.values.reshape(6, self.resolution, self.resolution, self.intervals)
-        # Duplicate the workloads to upscale
-        upscaled_workload = np.repeat(np.repeat(reshaped_workload, scale_factor, axis=1), scale_factor, axis=2)
+        # Apply zoom for upscaling
+        upscaled_workload = zoom(reshaped_workload, (1, scale_factor, scale_factor, 1), order=order)
         # Reshape back to 6 * target_res * target_res by intervals
         upscaled_workload = upscaled_workload.reshape(6 * target_resolution * target_resolution, self.intervals)
         # Create a new Workload object from the upscaled workload, preserving column headers
@@ -120,11 +118,11 @@ if __name__ == "__main__":
     # workload = Workload.read_nc4_dir('data')
     # Upscale the workload to a different resolution
     workload = Workload.read_csv('test/workloads/c24.csv')
-    upscaled_workload = workload.upscale(48)
+    upscaled_workload = workload.upscale(90, 0)
     # Write the workload to a csv file
-    upscaled_workload.write_csv("test/workloads/upscaled_c24_to_c48.csv")
+    upscaled_workload.write_csv("test/workloads/nearest_c24_to_c48.csv")
     # Read the actual workload from the file
-    workload = Workload.read_csv("test/workloads/c48.csv")
+    workload = Workload.read_csv("test/workloads/c90.csv")
     # Compute the difference between the upscaled workload and the actual workload
     # Since the upscaled workload has less intervals than the actual workload, we need to slice the actual workload to match the upscaled workload
     diff = workload.workload.iloc[:, :upscaled_workload.intervals] - upscaled_workload.workload
