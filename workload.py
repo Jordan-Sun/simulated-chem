@@ -90,10 +90,13 @@ class Workload:
 # If ran as main, test the workload class
 if __name__ == "__main__":
     # Test reading from nc4 files
-    workload = Workload.read_nc4_dir('data')
+    input_dir = (
+        "/Users/jordansun/Documents/Research/GCHP_Optimization/sftp/c90_kpp_raw"
+    )
+    workload = Workload.read_nc4_dir(input_dir)
     print(workload.workload)
     # Write the workload to a csv file
-    workload.write_csv('workload.csv')
+    workload.write_csv('test/workloads/c90.csv')
     # Test computing lower bound
     print(workload.lower_bound(36))
     print(workload.lower_bound(144))

@@ -58,7 +58,9 @@ class Assignment:
             assignment = f.variables['KppRank'][:]
             # Convert the masked array to a ndarray and flatten it
             assignment = assignment.filled().flatten()
-        return Assignment(pd.DataFrame(assignment))
+            # They are integers by default, so convert to int
+            assignment = assignment.astype(int)
+        return Assignment(pd.DataFrame(assignment, columns=["KppRank"]))
 
     # Reads the assignment from a csv file
     @staticmethod
@@ -66,10 +68,33 @@ class Assignment:
         # Read the assignment from the file
         assignment = pd.read_csv(file_name, index_col=0)
         return Assignment(assignment)
-    
+
     # Writes the assignment to a csv file
     def write_csv(self, file_name: os.path):
         self.assignment.to_csv(file_name)
+
+    # Writes the original assignment to a prettified csv file for visualization purposes
+    def write_pretty_csv(self, resolution: int, file_name: os.path):
+        # Verify that the resolution is valid
+        if resolution <= 0:
+            raise ValueError(f"Resolution must be greater than 0, got {resolution}.")
+        # Verify that there's only one interval
+        if self.intervals != 1:
+            raise ValueError(f"Expected only one interval, got {self.intervals}.")
+        # There should be exactly 6*72*resolution^2 samples
+        if self.samples != 6 * 72 * resolution**2:
+            raise ValueError(f"Expected {6 * 72 * resolution**2} samples, got {self.samples}.")
+        # Reshape the assignment to a 3D array
+        visualization = self.assignment.values.reshape(
+            (72, 6, resolution, resolution)
+        )
+        # Only keep one of the 72 layers
+        visualization = visualization[0, :, :, :]
+        print(f"Debug: {visualization}")
+        # Create a new dataframe with the visualization, reshape to 2D as 6*res by res
+        df = pd.DataFrame(visualization.reshape(6 * resolution, resolution))
+        # Print the assignment to a csv file
+        df.to_csv(file_name, index=False, header=False)
 
     # Writes the assignment to a directory of mapping files for each processor
     def write_mapping(self, original_assignment: 'Assignment', directory: os.path):
@@ -122,7 +147,7 @@ class Assignment:
 
     # Simulates the assignment for a given workload
     def simulate(self, workload: 'Workload', static: bool = False, sim_log: str = None) -> float:
-        # Initialize the simulated workload 
+        # Initialize the simulated workload
         L_sim = 0
         # Open the log file if it is provided
         if sim_log is not None:
@@ -164,7 +189,7 @@ class Assignment:
         if sim_log is not None:
             f.write(f"Total,{L_sim}\n")
         return L_sim
-    
+
     # Movement of samples between processors
     def movement(self, original_assignment: 'Assignment', send_log: str = None, recv_log: str = None) -> Tuple[int, int, int, int]:
         # Initialize the samples sent and received
@@ -244,7 +269,7 @@ if __name__ == '__main__':
     workload_base = "test/workloads/"
     og_assignment_base = "test/og_assignments/"
     assignment_base = "test/"
-    strategy = "greedy_predicted"
+    strategy = "greedy_padded"
 
     # Read the workload
     # workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
@@ -282,9 +307,10 @@ if __name__ == '__main__':
         # print(f"Mapping time: {elapsed:.2f} seconds")
         # Test simulate
         print("Test simulate")
+        assignment.intervals = 430
         L = assignment.simulate(workload, False, f"{test_path}/simulation.csv")
         print(L)
-        # Test movement
-        print("Test movement")
-        S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
-        print(S_sum, R_sum, S_max, R_max)
+        # # Test movement
+        # print("Test movement")
+        # S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
+        # print(S_sum, R_sum, S_max, R_max)

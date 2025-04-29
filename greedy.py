@@ -319,12 +319,13 @@ if __name__ == "__main__":
 
     # Test the heuristic at res and procs
     # workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
-    workload = Workload.read_csv(f"{workload_base}/predict_14_2_1_c24.csv")
+    workload = Workload.read_csv(f"{workload_base}/padded_14_2_1_c24.csv")
     original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
     original_assignment.set_processor_groups(hosts, ptile)
 
-    base = f"test/{swap_alg_name}/c{res}_p{procs}"
+    base = f"test/{swap_alg_name}_padded/c{res}_p{procs}"
     os.makedirs(base, exist_ok=True)
+    os.makedirs(f"{base}/intervals", exist_ok=True)
     assignments = []
 
     # # Start timer
