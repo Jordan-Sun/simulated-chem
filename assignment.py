@@ -263,7 +263,7 @@ if __name__ == '__main__':
     # # Test simulate
     # print("Test simulate")
     # L = og_assignment.simulate(
-    #     workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv"
+    #     workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv", n_intervals=72
     # )
     # print(L)
 
@@ -284,7 +284,7 @@ if __name__ == '__main__':
         # print(f"Mapping time: {elapsed:.2f} seconds")
         # Test simulate
         print("Test simulate")
-        L = assignment.simulate(workload, False, f"{test_path}/simulation.csv", n_intervals=workload.intervals)
+        L = assignment.simulate(workload, False, f"{test_path}/simulation.csv", n_intervals=72)
         print(L)
         # # Test movement
         # print("Test movement")

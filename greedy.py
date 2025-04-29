@@ -318,12 +318,16 @@ if __name__ == "__main__":
         exit(1)
 
     # Test the heuristic at res and procs
-    workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
-    # workload = Workload.read_csv(f"{workload_base}/upscaled_c24_to_c48.csv")
-    original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
-    original_assignment.set_processor_groups(hosts, ptile)
+    mod = "bilinear"
+    # Append an underscore if mod is not empty as separator
+    if mod != "":
+        mod += "_"
 
-    base = f"test/{swap_alg_name}/c{res}_p{procs}"
+    # workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
+    workload = Workload.read_csv(f"{workload_base}/{mod}c24_to_c{res}.csv")
+    original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
+    # original_assignment.set_processor_groups(hosts, ptile)
+    base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}"
     os.makedirs(base, exist_ok=True)
     os.makedirs(f"{base}/intervals", exist_ok=True)
     assignments = []

@@ -118,17 +118,19 @@ if __name__ == "__main__":
     # workload = Workload.read_nc4_dir('data')
     # Upscale the workload to a different resolution
     workload = Workload.read_csv('test/workloads/c24.csv')
-    upscaled_workload = workload.upscale(90, 0)
+    target_resolution = 90
+    upscaled_workload = workload.upscale(target_resolution, order=3)
     # Write the workload to a csv file
-    upscaled_workload.write_csv("test/workloads/nearest_c24_to_c48.csv")
+    upscaled_workload.write_csv(
+        f"test/workloads/bicubic_c24_to_c{target_resolution}.csv"
+    )
     # Read the actual workload from the file
-    workload = Workload.read_csv("test/workloads/c90.csv")
+    workload = Workload.read_csv("test/workloads/c{resolution}.csv".format(resolution=target_resolution))
     # Compute the difference between the upscaled workload and the actual workload
     # Since the upscaled workload has less intervals than the actual workload, we need to slice the actual workload to match the upscaled workload
     diff = workload.workload.iloc[:, :upscaled_workload.intervals] - upscaled_workload.workload
     # Summarize the difference
     print(diff.describe())
-    diff.describe().to_csv("summary.csv")
     # Test computing lower bound
     # print(workload.lower_bound(36))
     # print(workload.lower_bound(144))
