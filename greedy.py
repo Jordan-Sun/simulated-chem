@@ -299,9 +299,9 @@ def greed_heuristic_local(
 # If ran as main, test the heuristic
 if __name__ == "__main__":
     # Configuration
-    res = 48
-    hosts = 6
-    ptile = 6
+    res = 90
+    hosts = 4
+    ptile = 36
     swap_alg_name = "greedy"
 
     workload_base = "test/workloads/"
@@ -318,13 +318,16 @@ if __name__ == "__main__":
         exit(1)
 
     # Test the heuristic at res and procs
-    mod = "bilinear"
+    mod = "bicubic"
     # Append an underscore if mod is not empty as separator
     if mod != "":
         mod += "_"
 
-    # workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
-    workload = Workload.read_csv(f"{workload_base}/{mod}c24_to_c{res}.csv")
+    if mod == "":
+        workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
+    else:
+        workload = Workload.read_csv(f"{workload_base}/{mod}c24_to_c{res}.csv")
+
     original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
     # original_assignment.set_processor_groups(hosts, ptile)
     base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}"
