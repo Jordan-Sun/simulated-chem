@@ -101,11 +101,11 @@ class Workload:
 
     # Upscales the workload to a different resolution
     def upscale(self, target_resolution: int, order: int = 0) -> 'Workload':
-        # Calculate the scale factor
-        scale_factor = target_resolution / self.resolution
         # Reshape the workload matrix to 6 * res * res by intervals
         reshaped_workload = self.workload.values.reshape(6, self.resolution, self.resolution, self.intervals)
 
+        # # Calculate the scale factor
+        # scale_factor = target_resolution / self.resolution
         # # Apply zoom for upscaling (bad because it uses edge interpolation)
         # upscaled_workload = zoom(reshaped_workload, (1.0, scale_factor, scale_factor, 1.0), order=order)
 
@@ -114,6 +114,7 @@ class Workload:
             reshaped_workload,
             (6, target_resolution, target_resolution, self.intervals),
             order=order,
+            mode='edge',  # Use edge mode to extend the edges
             preserve_range=True,  # Prevents normalization
             anti_aliasing=False,  # For area/binned interpretation
         )
@@ -130,9 +131,9 @@ if __name__ == "__main__":
     # Upscale the workload to a different resolution
     target_resolution = 90
     upscale_dict = {
-        # 0: "nearest",
+        0: "nearest",
         1: "bilinear",
-        # 3: "bicubic",
+        3: "bicubic",
     }
     for order, method in upscale_dict.items():
         # Upscale the workload

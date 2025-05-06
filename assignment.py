@@ -163,8 +163,6 @@ class Assignment:
             if sim_log is not None:
                 f.write(f"{interval}," + ",".join([str(L) for L in L_int]) + f",{max_L},{mean_L},{std_L},{cv_L}\n")
         print()
-        # Print the total simulated workload
-        print(f"Total simulated workspace: {L_sim}")
         return L_sim
     
     # Movement of samples between processors
@@ -240,13 +238,15 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
-    resolution = 90
-    procs = 144
+    resolution = 48
+    procs = 36
 
     workload_base = "test/workloads"
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
-    strategy = "bicubic_greedy"
+    mods = ["nearest", "bilinear", "bicubic"]
+    strategy = mods[0] + "_" + "greedy"
+    # strategy = "greedy"
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
@@ -259,12 +259,12 @@ if __name__ == '__main__':
     )
     assert og_assignment.assignment.shape[0] == 6 * resolution * resolution
     assert og_assignment.processors == procs
-    # Test simulate
-    print("Test simulate")
-    L = og_assignment.simulate(
-        workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv", n_intervals=72
-    )
-    print(L)
+    # # Test simulate
+    # print("Test simulate")
+    # L = og_assignment.simulate(
+    #     workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv", n_intervals=72
+    # )
+    # print(L)
 
     if strategy is not None:
         print(f"Testing c{resolution} p{procs} {strategy}")
@@ -284,7 +284,7 @@ if __name__ == '__main__':
         # Test simulate
         print("Test simulate")
         L = assignment.simulate(workload, False, f"{test_path}/simulation.csv", n_intervals=72)
-        # print(L)
+        print(L)
         # # Test movement
         # print("Test movement")
         # S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
