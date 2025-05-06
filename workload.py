@@ -2,7 +2,8 @@ import os
 import numpy as np
 import pandas as pd
 
-from scipy.ndimage import zoom
+# from scipy.ndimage import zoom
+from skimage.transform import resize
 
 # Defines the workload class
 class Workload:
@@ -41,14 +42,14 @@ class Workload:
         # Return the costs
         costs = var[0].sum(axis=0).flatten()
         return costs
-    
+
     # Reads raw workload from a nc4 file
     @staticmethod
     def read_nc4_file(file_name: os.path) -> 'Workload':
         # Read the workload from the file
         workload = Workload.read_nc4(file_name)
         return Workload(pd.DataFrame(workload))
-    
+
     # Reads raw workload from a directory of nc4 files
     @staticmethod
     def read_nc4_dir(dir_name: os.path) -> 'Workload':
@@ -78,7 +79,7 @@ class Workload:
         workload = pd.read_csv(file_name, index_col=0)
         # Create a Workload object from the dataframe
         return Workload(workload)
-    
+
     # Writes the workload to a csv file
     def write_csv(self, file_name: os.path):
         self.workload.to_csv(file_name)
@@ -104,40 +105,45 @@ class Workload:
         scale_factor = target_resolution / self.resolution
         # Reshape the workload matrix to 6 * res * res by intervals
         reshaped_workload = self.workload.values.reshape(6, self.resolution, self.resolution, self.intervals)
-        # Apply zoom for upscaling
-        upscaled_workload = zoom(reshaped_workload, (1, scale_factor, scale_factor, 1), order=order)
+
+        # # Apply zoom for upscaling (bad because it uses edge interpolation)
+        # upscaled_workload = zoom(reshaped_workload, (1.0, scale_factor, scale_factor, 1.0), order=order)
+
+        # Use skimage's resize for bin interpretation
+        upscaled_workload = resize(
+            reshaped_workload,
+            (6, target_resolution, target_resolution, self.intervals),
+            order=order,
+            preserve_range=True,  # Prevents normalization
+            anti_aliasing=False,  # For area/binned interpretation
+        )
+
         # Reshape back to 6 * target_res * target_res by intervals
         upscaled_workload = upscaled_workload.reshape(6 * target_resolution * target_resolution, self.intervals)
         # Create a new Workload object from the upscaled workload, preserving column headers
         return Workload(pd.DataFrame(upscaled_workload, columns=self.workload.columns))
 
-
 # If ran as main, test the workload class
 if __name__ == "__main__":
     # Read the workload
     workload = Workload.read_csv("test/workloads/c24.csv")
-
     # Upscale the workload to a different resolution
     target_resolution = 90
-    upscaled_workload = workload.upscale(target_resolution, order=1)
-    # Write the workload to a csv file
-    upscaled_workload.write_csv(
-        f"test/workloads/bilinear_c24_to_c{target_resolution}.csv"
-    )
+    upscale_dict = {
+        # 0: "nearest",
+        1: "bilinear",
+        # 3: "bicubic",
+    }
+    for order, method in upscale_dict.items():
+        # Upscale the workload
+        upscaled_workload = workload.upscale(target_resolution, order=order)
+        # Write the workload to a csv file
+        upscaled_workload.write_csv(
+            f"test/workloads/{method}_c24_to_c{target_resolution}.csv"
+        )
 
-    # Read the actual workload from the file
-    workload = Workload.read_csv("test/workloads/c{resolution}.csv".format(resolution=target_resolution))
-    # Print the maximum workload for each interval
-    print(workload.workload.max(axis=0))
-    print(workload.workload.mean(axis=0))
-    # Compute the difference between the upscaled workload and the actual workload
-    # Since the upscaled workload has less intervals than the actual workload, we need to slice the actual workload to match the upscaled workload
-    diff = workload.workload.iloc[:, :upscaled_workload.intervals] - upscaled_workload.workload
-    # Use the absolute value of the difference
-    diff = diff.abs()
-    # Summarize the difference
-    print(diff.describe())
-    diff.describe().to_csv("test/workloads/description.csv")
+    # # Read the actual workload from the file
+    # workload = Workload.read_csv(f"test/workloads/c{target_resolution}.csv")
 
     # # Test computing lower bound
     # intervals = range(72)
