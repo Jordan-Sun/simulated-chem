@@ -238,7 +238,7 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
-    resolution = 48
+    resolution = 90
     procs = 36
 
     workload_base = "test/workloads"
