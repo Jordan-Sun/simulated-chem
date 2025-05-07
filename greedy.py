@@ -299,8 +299,8 @@ def greed_heuristic_local(
 # If ran as main, test the heuristic
 if __name__ == "__main__":
     # Configuration
-    res = 48
-    hosts = 16
+    res = 90
+    hosts = 1
     ptile = 36
     swap_alg_name = "greedy"
 
@@ -319,7 +319,7 @@ if __name__ == "__main__":
 
     # Test the heuristic at res and procs
     mods = ["nearest", "bilinear", "bicubic"]
-    mod = mods[0]
+    mod = ""
     # Append an underscore if mod is not empty as separator
     if mod != "":
         mod += "_"

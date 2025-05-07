@@ -245,8 +245,8 @@ if __name__ == '__main__':
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
     mods = ["nearest", "bilinear", "bicubic"]
-    strategy = mods[0] + "_" + "greedy"
-    # strategy = "greedy"
+    # strategy = mods[0] + "_" + "greedy"
+    strategy = "greedy"
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
