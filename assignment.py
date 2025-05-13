@@ -238,15 +238,15 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
-    resolution = 90
+    resolution = 48
     procs = 36
 
     workload_base = "test/workloads"
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
-    mods = ["nearest", "bilinear", "bicubic"]
-    # strategy = mods[0] + "_" + "greedy"
-    strategy = "greedy"
+    mods = ["nearest", "bilinear", "bicubic", "srcnn", "srcnn_phase"]
+    strategy = mods[1] + "_" + "greedy"
+    # strategy = "greedy"
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")

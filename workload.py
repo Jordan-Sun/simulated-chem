@@ -2,9 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 
-# from scipy.ndimage import zoom
-from skimage.transform import resize
-
 # Defines the workload class
 class Workload:
     # Constructor
@@ -101,13 +98,9 @@ class Workload:
 
     # Upscales the workload to a different resolution
     def upscale(self, target_resolution: int, order: int = 0) -> 'Workload':
+        from skimage.transform import resize
         # Reshape the workload matrix to 6 * res * res by intervals
         reshaped_workload = self.workload.values.reshape(6, self.resolution, self.resolution, self.intervals)
-
-        # # Calculate the scale factor
-        # scale_factor = target_resolution / self.resolution
-        # # Apply zoom for upscaling (bad because it uses edge interpolation)
-        # upscaled_workload = zoom(reshaped_workload, (1.0, scale_factor, scale_factor, 1.0), order=order)
 
         # Use skimage's resize for bin interpretation
         upscaled_workload = resize(
