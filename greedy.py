@@ -50,7 +50,8 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndar
     swap_index = 0
     ids_high = []
     ids_low = []
-    while cost_high > cost_low:
+    # While the cost of the high cost set is greater than the low cost set or one of the sets is exhausted
+    while cost_high > cost_low and swap_index < set_high.shape[0] and swap_index < set_low.shape[0]:
         # Swap the most costly column from the high cost set with the least costly column from the low cost set
         # Update the costs
         cost_high -= set_high[swap_index, 1]
@@ -179,7 +180,7 @@ def greed_heuristic(
         workload: Workload,
         original_assignment: Assignment,
         interval: int = 0,
-        swap_alg = dp_swap,
+        swap_alg = greedy_swap,
         result_path: str = None
 ) -> Assignment:
     # Check if an assignment is already at the result path
@@ -319,7 +320,7 @@ if __name__ == "__main__":
 
     # Test the heuristic at res and procs
     mods = ["nearest", "bilinear", "bicubic", "srcnn", "srcnn_phase"]
-    mod = mods[1]
+    mod = mods[4]
     # Append an underscore if mod is not empty as separator
     if mod != "":
         mod += "_"

@@ -1,13 +1,19 @@
 from workload import Workload
+from assignment import Assignment
+import greedy
 
 import os
 import re
+import random
+# from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from scipy.stats import spearmanr, pearsonr
+
 
 # --- SRCNN Model ---
 class SRCNN(nn.Module):
@@ -34,16 +40,14 @@ def add_phase_channel(x: torch.Tensor, t_indices: torch.Tensor) -> torch.Tensor:
 
 
 # --- Prepare Tensor Dataset ---
-import random
-import torch
-
-
-import random
-import torch
 
 
 def prepare_dataset(
-    low: Workload, high: Workload, block_size: int = 9, num_test_blocks: int = 1, seed: int = 42
+    low: Workload,
+    high: Workload,
+    block_size: int = 9,
+    num_test_blocks: int = 1,
+    seed: int = 42,
 ) -> tuple[
     tuple[torch.Tensor, torch.Tensor, torch.Tensor],
     tuple[torch.Tensor, torch.Tensor, torch.Tensor],
@@ -75,8 +79,12 @@ def prepare_dataset(
     train_indices = [i for i in range(intervals) if i not in test_indices]
 
     # Reshape workload to (T, 6, H, W)
-    low_data = low.workload.values.reshape(6, low.resolution, low.resolution, intervals).transpose(3, 0, 1, 2)
-    high_data = high.workload.values.reshape(6, high.resolution, high.resolution, intervals).transpose(3, 0, 1, 2)
+    low_data = low.workload.values.reshape(
+        6, low.resolution, low.resolution, intervals
+    ).transpose(3, 0, 1, 2)
+    high_data = high.workload.values.reshape(
+        6, high.resolution, high.resolution, intervals
+    ).transpose(3, 0, 1, 2)
 
     # Slice and convert to tensors
     x_train = torch.tensor(low_data[train_indices], dtype=torch.float32)
@@ -99,7 +107,7 @@ def train_srcnn(
     t=None,
     use_phase=False,
     epochs=10,
-    batch_size=8,
+    batch_size=9,
     output_dir="models/srcnn",
     resume=True,
 ):
@@ -156,6 +164,111 @@ def train_srcnn(
         torch.save(model.state_dict(), save_path)
         print(f"Saved model to {save_path}")
 
+
+def fine_tune_srcnn(
+    model,
+    x,
+    y,
+    og_assignment: Assignment,
+    true_workload: Workload,
+    t=None,
+    use_phase=False,
+    epochs=10,
+    batch_size=9,
+    output_dir="models/srcnn",
+    resume=True,
+):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+    dataset = TensorDataset(x, y, t) if use_phase else TensorDataset(x, y)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    if resume:
+        # Find latest non-fine-tune checkpoint
+        checkpoints = [
+            f
+            for f in os.listdir(output_dir)
+            if f.startswith("epoch_") and f.endswith(".pth")
+        ]
+        if checkpoints:
+            latest = max(
+                checkpoints,
+                key=lambda f: int(re.search(r"epoch_(\d+)", f).group(1)),
+            )
+            ckpt_path = os.path.join(output_dir, latest)
+            state_dict = torch.load(ckpt_path, map_location=device)
+            model.load_state_dict(state_dict)
+            print(f"Using checkpoint {ckpt_path} for fine-tuning")
+
+    for epoch in range(0, epochs):
+        model.train()
+        total_loss = 0.0
+        interval = 0
+        for batch in loader:
+            xb, yb = batch[0].to(device), batch[1].to(device)
+            tb = batch[2].to(device) if use_phase else None
+
+            if use_phase:
+                xb = add_phase_channel(xb, tb)
+
+            pred = model(xb)
+
+            # Convert the predicted tensor back to a workload state
+            pred_workload = Workload(
+                pd.DataFrame(
+                    pred.detach()
+                    .cpu()
+                    .numpy()
+                    .reshape(-1, 6 * xb.size(2) * xb.size(3))
+                    .T
+                )
+            )
+
+            losses = []
+
+            # def process_assignment(i):
+            #     return greedy.greed_heuristic(pred_workload, og_assignment, interval=i)
+
+            # with ThreadPoolExecutor() as executor:
+            #     for i, assignment in enumerate(executor.map(process_assignment, range(batch_size))):
+            #         # Simulate the workload for each interval
+            #         interval_workload = Workload(
+            #             true_workload.workload.iloc[:, interval + i : interval + i + 1]
+            #         )
+            #         loss = assignment.simulate(interval_workload)
+            #         losses.append(loss)
+
+            for i in range(batch_size):
+                # Simulate the workload for each interval
+                interval_workload = Workload(
+                    true_workload.workload.iloc[:, interval + i : interval + i + 1]
+                )
+                assignment = greedy.greed_heuristic(pred_workload, og_assignment, interval=i)
+                loss = assignment.simulate(interval_workload)
+                losses.append(loss)
+
+            # Use the array of losses as the total loss
+            interval += batch_size
+
+            # Convert the loss to a PyTorch tensor for backpropagation
+            loss = torch.tensor(losses, requires_grad=True, device=device).sum()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+
+        print(f"Fine-tuning Epoch {epoch+1}: Simulated Kpp Steps = {total_loss:.6f}")
+
+        # Save model every epoch
+        save_path = os.path.join(output_dir, f"fine_tune_epoch_{epoch+1}.pth")
+        torch.save(model.state_dict(), save_path)
+        print(f"Saved model to {save_path}")
+
+
 # --- Evaluation Function ---
 def evaluate_srcnn(
     model, x_test, y_test, t_test=None, use_phase=False, checkpoint=None
@@ -191,6 +304,7 @@ def evaluate_srcnn(
     print(f"  Pearson  = {pearson:.4f}")
 
     return preds
+
 
 ## --- Apply Model to Upscaled Workload ---
 def apply_srcnn(
@@ -235,21 +349,26 @@ if __name__ == "__main__":
     # Check if the upscaled workload exists
     if os.path.exists(f"{base}/bilinear_c{low_res}_to_c{high_res}.csv"):
         print("Using existing upscaled workload...")
-        upscaled_workload = Workload.read_csv(f"{base}/bilinear_c{low_res}_to_c{high_res}.csv")
+        upscaled_workload = Workload.read_csv(
+            f"{base}/bilinear_c{low_res}_to_c{high_res}.csv"
+        )
     else:
         print("Upscaling workload...")
         low_workload = Workload.read_csv(f"{base}/c{low_res}.csv")
-        upscaled_workload= low_workload.upscale(high_res, 1)
+        upscaled_workload = low_workload.upscale(high_res, 1)
         # Store the upscaled workload for future use
         upscaled_workload.write_csv(f"{base}/bilinear_c{low_res}_to_c{high_res}.csv")
 
     high_workload = Workload.read_csv(f"{base}/c{high_res}.csv")
+    og_assignment = Assignment.read_csv(f"test/og_assignments/c{high_res}_p36.csv")
 
-    (train_x, train_y, train_t), (test_x, test_y, test_t) = prepare_dataset(upscaled_workload, high_workload)
+    (train_x, train_y, train_t), (test_x, test_y, test_t) = prepare_dataset(
+        upscaled_workload, high_workload
+    )
 
     use_phase = True
 
-    print(f"Training SRCNN ({"no" if not use_phase else ""} phase)...")
+    print(f"Training SRCNN ({"no " if not use_phase else ""}phase)...")
     model = SRCNN(in_channels=7 if use_phase else 6)
     train_srcnn(
         model,
@@ -261,7 +380,7 @@ if __name__ == "__main__":
         output_dir="models/srcnn_phase" if use_phase else "models/srcnn",
     )
 
-    print(f"Evaluating SRCNN ({"no" if not use_phase else ""} phase)...")
+    print(f"Evaluating SRCNN ({"no " if not use_phase else ""}phase)...")
     evaluate_srcnn(
         model,
         test_x,
@@ -270,9 +389,47 @@ if __name__ == "__main__":
         use_phase=use_phase,
     )
 
-    print(f"Applying SRCNN ({"no" if not use_phase else ""} phase)...")
+    print(f"Applying SRCNN ({"no " if not use_phase else ""}phase)...")
     apply_srcnn(
         model,
         upscaled_workload,
         use_phase=use_phase,
-    ).write_csv(f"{base}/srcnn{'_phase' if use_phase else ''}_c{low_res}_to_c{high_res}.csv")
+    ).write_csv(
+        f"{base}/srcnn{'_phase' if use_phase else ''}_c{low_res}_to_c{high_res}.csv"
+    )
+
+    print(f"Fine-tuning SRCNN ({"no " if not use_phase else ""}phase)...")
+    fine_tune_srcnn(
+        model,
+        train_x,
+        train_y,
+        og_assignment,
+        high_workload,
+        t=train_t if use_phase else None,
+        use_phase=use_phase,
+        epochs=10,
+        output_dir="models/srcnn_phase" if use_phase else "models/srcnn",
+    )
+
+    print(f"Evaluating fine-tuned SRCNN ({"no " if not use_phase else ""}phase)...")
+    evaluate_srcnn(
+        model,
+        test_x,
+        test_y,
+        t_test=test_t if use_phase else None,
+        use_phase=use_phase,
+        checkpoint=(
+            "models/srcnn_phase/fine_tune_epoch_10.pth"
+            if use_phase
+            else "models/srcnn/fine_tune_epoch_10.pth"
+        ),
+    )
+
+    print(f"Applying fine-tuned SRCNN ({"no " if not use_phase else ""}phase)...")
+    apply_srcnn(
+        model,
+        upscaled_workload,
+        use_phase=use_phase,
+    ).write_csv(
+        f"{base}/srcnn{'_phase' if use_phase else ''}_c{low_res}_to_c{high_res}_fine_tune.csv"
+    )

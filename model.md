@@ -28,20 +28,11 @@
 ### Test intervals
 [9, 10, 11, 12, 13, 14, 15, 16, 17]
 
-### 10 Epochs
-```
-📊 Evaluation:
-  MSE  = 6387.422363
-  MAE  = 53.251541
-  Spearman = 0.7747
-  Pearson  = 0.8527
-```
-
 ### 100 Epochs
 ```
-  📊 Evaluation:
-  MSE  = 1322.300781
-  MAE  = 25.230742
-  Spearman = 0.9306
-  Pearson  = 0.9713
+📊 Evaluation:
+  MSE  = 1490.418457
+  MAE  = 26.749968
+  Spearman = 0.9219
+  Pearson  = 0.9672
 ```
