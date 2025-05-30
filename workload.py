@@ -122,7 +122,7 @@ if __name__ == "__main__":
     # Read the workload
     workload = Workload.read_csv("test/workloads/c24.csv")
     # Upscale the workload to a different resolution
-    target_resolution = 90
+    target_resolution = 180
     upscale_dict = {
         0: "nearest",
         1: "bilinear",
@@ -136,11 +136,13 @@ if __name__ == "__main__":
             f"test/workloads/{method}_c24_to_c{target_resolution}.csv"
         )
 
-    # # Read the actual workload from the file
-    # workload = Workload.read_csv(f"test/workloads/c{target_resolution}.csv")
+    # Test computing lower bound if it exists
+    if os.path.exists(f"test/workloads/c{target_resolution}.csv"):
+        # Read the actual workload from the file
+        workload = Workload.read_csv(f"test/workloads/c{target_resolution}.csv")
 
-    # # Test computing lower bound
-    # intervals = range(72)
-    # print(workload.lower_bound(36, intervals))
-    # print(workload.lower_bound(144, intervals))
-    # print(workload.lower_bound(576, intervals))
+        # Test computing lower bound
+        intervals = range(72)
+        print(workload.lower_bound(36, intervals))
+        print(workload.lower_bound(144, intervals))
+        print(workload.lower_bound(576, intervals))

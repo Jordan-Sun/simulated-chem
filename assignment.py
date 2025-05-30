@@ -238,15 +238,16 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == '__main__':
-    resolution = 48
-    procs = 36
+    resolution = 180
+    procs = 144
 
     workload_base = "test/workloads"
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
     mods = ["nearest", "bilinear", "bicubic", "srcnn", "srcnn_phase"]
-    strategy = mods[1] + "_" + "greedy"
+    # strategy = mods[2] + "_" + "greedy"
     # strategy = "greedy"
+    strategy = None
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
@@ -259,14 +260,16 @@ if __name__ == '__main__':
     )
     assert og_assignment.assignment.shape[0] == 6 * resolution * resolution
     assert og_assignment.processors == procs
-    # # Test simulate
-    # print("Test simulate")
-    # L = og_assignment.simulate(
-    #     workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv", n_intervals=72
-    # )
-    # print(L)
 
-    if strategy is not None:
+    if strategy is None:
+        # Simulate the original assignment if no strategy is given
+        print("Test simulate")
+        L = og_assignment.simulate(
+            workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv", n_intervals=72
+        )
+        print(L)
+    else:
+        # Test the given strategy
         print(f"Testing c{resolution} p{procs} {strategy}")
         test_path = f"{assignment_base}/{strategy}/c{resolution}_p{procs}"
         # Test read assignment
