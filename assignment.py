@@ -9,6 +9,7 @@ import pandas as pd
 
 import time
 
+
 # Defines the assignment class, a dataclass to store the assignment matrix
 @dataclass
 class Assignment:
@@ -26,7 +27,9 @@ class Assignment:
             self.processors = np.max(self.assignment.values) + 1
             # Throw an error if the number of processors is not a multiple of six
             if self.processors % 6 != 0:
-                raise ValueError(f'Expected number of processors to be a multiple of 6, got {self.processors}.')
+                raise ValueError(
+                    f"Expected number of processors to be a multiple of 6, got {self.processors}."
+                )
 
             # Default processor group: all processors in one group
             self.processor_groups = [list(range(self.processors))]
@@ -34,7 +37,9 @@ class Assignment:
     # Method to set processor groups based on the number of hosts and processors per host
     def set_processor_groups(self, num_hosts: int, processors_per_host: int):
         if self.processors != num_hosts * processors_per_host:
-            raise ValueError(f"Total processors ({self.processors}) must equal num_hosts ({num_hosts}) * processors_per_host ({processors_per_host}).")
+            raise ValueError(
+                f"Total processors ({self.processors}) must equal num_hosts ({num_hosts}) * processors_per_host ({processors_per_host})."
+            )
 
         self.processor_groups = [
             list(range(i * processors_per_host, (i + 1) * processors_per_host))
@@ -43,37 +48,38 @@ class Assignment:
 
     # Concatenates a list of assignments into a single assignment
     @staticmethod
-    def concatenate(assigns: list['Assignment']) -> 'Assignment':
+    def concatenate(assigns: list["Assignment"]) -> "Assignment":
         # Concatenate the assignments
         assignments = [assign.assignment for assign in assigns]
         return Assignment(pd.concat(assignments, axis=1))
 
     # Reads the assignment from a NC4 file
     @staticmethod
-    def read_nc4(file_name: os.path) -> 'Assignment':
+    def read_nc4(file_name: os.path) -> "Assignment":
         # Import netCDF4 only when needed
         import netCDF4 as nc
+
         # Open the netcdf file
-        with nc.Dataset(file_name, 'r') as f:
+        with nc.Dataset(file_name, "r") as f:
             # Read the KppRank variable
-            assignment = f.variables['KppRank'][:]
+            assignment = f.variables["KppRank"][:]
             # Convert the masked array to a ndarray and flatten it
             assignment = assignment.filled().flatten()
         return Assignment(pd.DataFrame(assignment))
 
     # Reads the assignment from a csv file
     @staticmethod
-    def read_csv(file_name: os.path) -> 'Assignment':
+    def read_csv(file_name: os.path) -> "Assignment":
         # Read the assignment from the file
         assignment = pd.read_csv(file_name, index_col=0)
         return Assignment(assignment)
-    
+
     # Writes the assignment to a csv file
     def write_csv(self, file_name: os.path):
         self.assignment.to_csv(file_name)
 
     # Writes the assignment to a directory of mapping files for each processor
-    def write_mapping(self, original_assignment: 'Assignment', directory: os.path):
+    def write_mapping(self, original_assignment: "Assignment", directory: os.path):
         # Create the directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -81,11 +87,10 @@ class Assignment:
         # The first space is used to store which processor should the processor expect to receive samples
         sources = [[-1 for _ in range(self.intervals)] for _ in range(self.processors)]
         targets = [[-1 for _ in range(self.intervals)] for _ in range(self.processors)]
-        mapping = [[[] for _ in range(
-            self.intervals)] for _ in range(self.processors)]
+        mapping = [[[] for _ in range(self.intervals)] for _ in range(self.processors)]
         # Iterate over the intervals
         for interval in range(self.intervals):
-            print(f'Processing interval {interval + 1}/{self.intervals}', end='\r')
+            print(f"Processing interval {interval + 1}/{self.intervals}", end="\r")
             # Reset the index counter for each interval
             index_counter = [0 for _ in range(self.processors)]
             # Iterate over the samples
@@ -104,9 +109,19 @@ class Assignment:
         print()
         # Write the mapping to the directory
         for processor in range(self.processors):
-            with open(os.path.join(directory, f"rank_{processor}.csv"), 'w') as f:
+            with open(os.path.join(directory, f"rank_{processor}.csv"), "w") as f:
                 # Compute the maximum line length (the longest line should always be one of the mapping array lines)
-                max_length = max([len(",".join([str(rank) for rank in mapping[processor][interval]]) + '\n') for interval in range(self.intervals)])
+                max_length = max(
+                    [
+                        len(
+                            ",".join(
+                                [str(rank) for rank in mapping[processor][interval]]
+                            )
+                            + "\n"
+                        )
+                        for interval in range(self.intervals)
+                    ]
+                )
                 # Print the number of intervals and maximum length
                 f.write(f"{self.intervals},{max_length}\n")
                 # Print the mapping for each interval in one line
@@ -118,17 +133,29 @@ class Assignment:
                     # Length of the array to send
                     f.write(f"{len(mapping[processor][interval])}\n")
                     # Array of columns to send on a new line for Fortran to process
-                    f.write(",".join([str(rank) for rank in mapping[processor][interval]]))
+                    f.write(
+                        ",".join([str(rank) for rank in mapping[processor][interval]])
+                    )
                     f.write("\n")
 
     # Simulates the assignment for a given workload
-    def simulate(self, workload: 'Workload', static: bool = False, sim_log: str = None, n_intervals: int = None) -> int:
-        # Initialize the simulated workload 
+    def simulate(
+        self,
+        workload: "Workload",
+        static: bool = False,
+        sim_log: str = None,
+        n_intervals: int = None,
+    ) -> int:
+        # Initialize the simulated workload
         L_sim = 0
         # Open the log file if it is provided
         if sim_log is not None:
-            f = open(sim_log, 'w')
-            f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Max,Mean,SD,CV\n")
+            f = open(sim_log, "w")
+            f.write(
+                "Interval,"
+                + ",".join([f"Processor{i}" for i in range(self.processors)])
+                + ",Max,Mean,SD,CV\n"
+            )
         # If the number of intervals is not given, use the number of intervals in the assignment
         if n_intervals is None:
             # Iterate over the intervals of the workload if static
@@ -140,7 +167,7 @@ class Assignment:
 
         intervals = range(n_intervals)
         for interval in intervals:
-            print(f'Simulation interval {interval + 1}/{n_intervals}', end='\r')
+            print(f"Simulation interval {interval + 1}/{n_intervals}", end="\r")
             # Store the workload for each processor in a list
             L_int = [0 for _ in range(self.processors)]
             # Iterate over the samples
@@ -161,12 +188,21 @@ class Assignment:
             L_sim += max_L
             # Write the interval workload to the log file
             if sim_log is not None:
-                f.write(f"{interval}," + ",".join([str(L) for L in L_int]) + f",{max_L},{mean_L},{std_L},{cv_L}\n")
+                f.write(
+                    f"{interval},"
+                    + ",".join([str(L) for L in L_int])
+                    + f",{max_L},{mean_L},{std_L},{cv_L}\n"
+                )
         print()
         return L_sim
-    
+
     # Movement of samples between processors
-    def movement(self, original_assignment: 'Assignment', send_log: str = None, recv_log: str = None) -> Tuple[int, int, int, int]:
+    def movement(
+        self,
+        original_assignment: "Assignment",
+        send_log: str = None,
+        recv_log: str = None,
+    ) -> Tuple[int, int, int, int]:
         # Initialize the samples sent and received
         S_sum = 0
         R_sum = 0
@@ -174,14 +210,22 @@ class Assignment:
         R_max = 0
         # Open the log file if it is provided
         if send_log is not None:
-            f = open(send_log, 'w')
-            f.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total,Max\n")
+            f = open(send_log, "w")
+            f.write(
+                "Interval,"
+                + ",".join([f"Processor{i}" for i in range(self.processors)])
+                + ",Total,Max\n"
+            )
         if recv_log is not None:
-            g = open(recv_log, 'w')
-            g.write("Interval," + ",".join([f"Processor{i}" for i in range(self.processors)]) + ",Total,Max\n")
+            g = open(recv_log, "w")
+            g.write(
+                "Interval,"
+                + ",".join([f"Processor{i}" for i in range(self.processors)])
+                + ",Total,Max\n"
+            )
         # Iterate over the intervals
         for interval in range(self.intervals):
-            print(f'Movement interval {interval + 1}/{self.intervals}', end='\r')
+            print(f"Movement interval {interval + 1}/{self.intervals}", end="\r")
             # Store the samples sent and received for each processor in a list
             S_int = [0 for _ in range(self.processors)]
             R_int = [0 for _ in range(self.processors)]
@@ -207,15 +251,21 @@ class Assignment:
                 targets[target] += 1
             for i in range(self.processors):
                 if sources[i] > 1:
-                    print(f"Error: Processor {i} is in more than one send pair at interval {interval}")
+                    print(
+                        f"Error: Processor {i} is in more than one send pair at interval {interval}"
+                    )
                     print(f"Pairs: {pairs}")
                 if targets[i] > 1:
-                    print(f"Error: Processor {i} is in more than one recv pair at interval {interval}")
+                    print(
+                        f"Error: Processor {i} is in more than one recv pair at interval {interval}"
+                    )
                     print(f"Pairs: {pairs}")
             # Verify that the samples sent is equal to the samples received for each pair
             for source, target in pairs:
                 if S_int[source] != R_int[target]:
-                    print(f"Error: Processor {source} sent {S_int[source]} samples but processor {target} received {R_int[target]} samples at interval {interval}")
+                    print(
+                        f"Error: Processor {source} sent {S_int[source]} samples but processor {target} received {R_int[target]} samples at interval {interval}"
+                    )
                     print(f"Pairs: {pairs}")
             # Add the samples sent and received to the total and max
             S_sum += sum(S_int)
@@ -224,9 +274,17 @@ class Assignment:
             R_max += max(R_int)
             # Write the interval samples sent and received to the log files
             if send_log is not None:
-                f.write(f"{interval}," + ",".join([str(S) for S in S_int]) + f",{sum(S_int)},{max(S_int)}\n")
+                f.write(
+                    f"{interval},"
+                    + ",".join([str(S) for S in S_int])
+                    + f",{sum(S_int)},{max(S_int)}\n"
+                )
             if recv_log is not None:
-                g.write(f"{interval}," + ",".join([str(R) for R in R_int]) + f",{sum(R_int)},{max(R_int)}\n")
+                g.write(
+                    f"{interval},"
+                    + ",".join([str(R) for R in R_int])
+                    + f",{sum(R_int)},{max(R_int)}\n"
+                )
         print()
         # Write the total and max samples sent and received to the log files
         if send_log is not None:
@@ -237,17 +295,17 @@ class Assignment:
 
 
 # If ran as main, test the assignment class
-if __name__ == '__main__':
-    resolution = 180
-    procs = 144
+if __name__ == "__main__":
+    resolution = 90
+    procs = 576
 
     workload_base = "test/workloads"
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
     mods = ["nearest", "bilinear", "bicubic", "srcnn", "srcnn_phase"]
     # strategy = mods[2] + "_" + "greedy"
-    # strategy = "greedy"
-    strategy = None
+    strategy = "greedy"
+    # strategy = None
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
@@ -265,7 +323,10 @@ if __name__ == '__main__':
         # Simulate the original assignment if no strategy is given
         print("Test simulate")
         L = og_assignment.simulate(
-            workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv", n_intervals=72
+            # workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv", n_intervals=72
+            workload,
+            True,
+            f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv",
         )
         print(L)
     else:
@@ -277,17 +338,24 @@ if __name__ == '__main__':
         assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
         assert assignment.assignment.shape[0] == 6 * resolution * resolution
         assert assignment.processors == procs
-        # # Test write mapping
-        # print("Test write mapping")
-        # mapping_start = time.time()
-        # assignment.write_mapping(og_assignment, f"{test_path}/mappings")
-        # mapping_end = time.time()
-        # elapsed = mapping_end - mapping_start
-        # print(f"Mapping time: {elapsed:.2f} seconds")
         # Test simulate
         print("Test simulate")
-        L = assignment.simulate(workload, False, f"{test_path}/simulation.csv", n_intervals=72)
+        L = assignment.simulate(
+            # workload, False, f"{test_path}/simulation.csv", n_intervals=72
+            workload,
+            False,
+            f"{test_path}/simulation.csv",
+        )
         print(L)
+
+        # Test write mapping
+        print("Test write mapping")
+        mapping_start = time.time()
+        assignment.write_mapping(og_assignment, f"{test_path}/mappings")
+        mapping_end = time.time()
+        elapsed = mapping_end - mapping_start
+        print(f"Mapping time: {elapsed:.2f} seconds")
+
         # # Test movement
         # print("Test movement")
         # S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
