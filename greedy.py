@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Tuple
 from functools import partial
+from concurrent.futures import ThreadPoolExecutor
 
 # import time
 
@@ -299,58 +300,4 @@ def greed_heuristic_local(
 
 # If ran as main, test the heuristic
 if __name__ == "__main__":
-    # Configuration
-    res = 48
-    hosts = 1
-    ptile = 576
-    swap_alg_name = "greedy"
-
-    workload_base = "test/workloads/"
-    original_assignment_base = "test/og_assignments/"
-
-    procs = hosts * ptile
-
-    if swap_alg_name == "greedy":
-        swap_alg = greedy_swap
-    elif swap_alg_name == "dp":
-        swap_alg = dp_swap
-    else:
-        print("Invalid swap algorithm")
-        exit(1)
-
-    # Test the heuristic at res and procs
-    mods = ["","nearest_", "bilinear_", "bicubic_"]
-    mod = mods[0]
-
-    if mod == "":
-        workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
-    else:
-        workload = Workload.read_csv(f"{workload_base}/{mod}c24_to_c{res}.csv")
-
-    original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
-    # original_assignment.set_processor_groups(hosts, ptile)
-    base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}"
-    os.makedirs(base, exist_ok=True)
-    os.makedirs(f"{base}/intervals", exist_ok=True)
-    assignments = []
-
-    # # Start timer
-    # start_time = time.time()
-
-    # Total time: 81.52 seconds for single threaded.
-    # Run the heuristic for each interval, single threaded without saving
-    for interval in range(workload.intervals):
-        assignments.append(
-            greed_heuristic(workload, original_assignment, interval, swap_alg, f'{base}/intervals/interval_{interval}.csv')
-        )
-
-    # # End timer
-    # end_time = time.time()
-    # # Print elapsed time
-    # elapsed_time = end_time - start_time
-    # print(f"Total time: {elapsed_time:.2f} seconds")
-
-    # Concatenate the assignments
-    print("Concatenating assignments")
-    assignment = Assignment.concatenate(assignments)
-    assignment.write_csv(f'{base}/assignment.csv')
+    print("This script is now a library. Use run_greedy_interval.py and combine_assignments.py for batch processing.")

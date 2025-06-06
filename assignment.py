@@ -296,7 +296,7 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == "__main__":
-    resolution = 90
+    resolution = 180
     procs = 576
 
     workload_base = "test/workloads"
@@ -323,10 +323,10 @@ if __name__ == "__main__":
         # Simulate the original assignment if no strategy is given
         print("Test simulate")
         L = og_assignment.simulate(
-            # workload, True, f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv", n_intervals=72
             workload,
             True,
             f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv",
+            n_intervals=72,
         )
         print(L)
     else:
@@ -341,20 +341,20 @@ if __name__ == "__main__":
         # Test simulate
         print("Test simulate")
         L = assignment.simulate(
-            # workload, False, f"{test_path}/simulation.csv", n_intervals=72
             workload,
             False,
             f"{test_path}/simulation.csv",
+            n_intervals=72,
         )
         print(L)
 
         # Test write mapping
-        print("Test write mapping")
-        mapping_start = time.time()
-        assignment.write_mapping(og_assignment, f"{test_path}/mappings")
-        mapping_end = time.time()
-        elapsed = mapping_end - mapping_start
-        print(f"Mapping time: {elapsed:.2f} seconds")
+        # print("Test write mapping")
+        # mapping_start = time.time()
+        # assignment.write_mapping(og_assignment, f"{test_path}/mappings")
+        # mapping_end = time.time()
+        # elapsed = mapping_end - mapping_start
+        # print(f"Mapping time: {elapsed:.2f} seconds")
 
         # # Test movement
         # print("Test movement")

@@ -122,19 +122,23 @@ if __name__ == "__main__":
     # Read the workload
     workload = Workload.read_csv("test/workloads/c24.csv")
     # Upscale the workload to a different resolution
-    target_resolution = 180
+    target_resolution = 90
     upscale_dict = {
         0: "nearest",
         1: "bilinear",
         3: "bicubic",
     }
-    for order, method in upscale_dict.items():
-        # Upscale the workload
+    import concurrent.futures
+
+    def process_upscale(args):
+        order, method = args
         upscaled_workload = workload.upscale(target_resolution, order=order)
-        # Write the workload to a csv file
         upscaled_workload.write_csv(
             f"test/workloads/{method}_c24_to_c{target_resolution}.csv"
         )
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        executor.map(process_upscale, upscale_dict.items())
 
     # Test computing lower bound if it exists
     if os.path.exists(f"test/workloads/c{target_resolution}.csv"):
@@ -142,7 +146,6 @@ if __name__ == "__main__":
         workload = Workload.read_csv(f"test/workloads/c{target_resolution}.csv")
 
         # Test computing lower bound
-        intervals = range(72)
-        print(workload.lower_bound(36, intervals))
-        print(workload.lower_bound(144, intervals))
-        print(workload.lower_bound(576, intervals))
+        print(workload.lower_bound(36))
+        print(workload.lower_bound(144))
+        print(workload.lower_bound(576))
