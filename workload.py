@@ -26,7 +26,7 @@ class Workload:
 
     # Reads raw workload from raw nc4 format to a numpy array
     @staticmethod
-    def read_nc4(file_name: os.path) -> np.ndarray:
+    def read_nc4(file_name: str) -> np.ndarray:
         import netCDF4 as nc  # Import netCDF4 only when needed
         # Open the netcdf file
         with nc.Dataset(file_name, 'r') as f:
@@ -42,14 +42,14 @@ class Workload:
 
     # Reads raw workload from a nc4 file
     @staticmethod
-    def read_nc4_file(file_name: os.path) -> 'Workload':
+    def read_nc4_file(file_name: str) -> "Workload":
         # Read the workload from the file
         workload = Workload.read_nc4(file_name)
         return Workload(pd.DataFrame(workload))
 
     # Reads raw workload from a directory of nc4 files
     @staticmethod
-    def read_nc4_dir(dir_name: os.path) -> 'Workload':
+    def read_nc4_dir(dir_name: str) -> "Workload":
         # Dictionary to store the workloads by timestamp
         workloads = {}
         for filename in os.listdir(dir_name):
@@ -71,14 +71,14 @@ class Workload:
 
     # Reads workload from processed csv format
     @staticmethod
-    def read_csv(file_name: os.path) -> 'Workload':
+    def read_csv(file_name: str) -> 'Workload':
         # Read the workload from the file
         workload = pd.read_csv(file_name, index_col=0)
         # Create a Workload object from the dataframe
         return Workload(workload)
 
     # Writes the workload to a csv file
-    def write_csv(self, file_name: os.path):
+    def write_csv(self, file_name: str):
         self.workload.to_csv(file_name)
 
     # Computes the lower bound of the workload for a given number of processors for the given intervals if given

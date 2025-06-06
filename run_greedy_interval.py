@@ -1,28 +1,36 @@
 """
 run_greedy_interval.py
-Runs the greedy heuristic for a single interval and writes the result to a CSV file.
-Usage: python run_greedy_interval.py <interval> <res> <hosts> <ptile> <swap_alg_name> <workload_base> <original_assignment_base> <mod>
+Runs the greedy heuristic for a range of intervals and writes the results to CSV files.
+Usage: python run_greedy_interval.py <start_interval> <batch_size> <res> <hosts> <ptile> <swap_alg_name> <workload_base> <original_assignment_base> [mod]
 """
 import sys
 import os
-from pathlib import Path
 from greedy import greed_heuristic, greedy_swap, dp_swap
 from workload import Workload
 from assignment import Assignment
 
-if len(sys.argv) != 9:
-    print("Usage: python run_greedy_interval.py <interval> <res> <hosts> <ptile> <swap_alg_name> <workload_base> <original_assignment_base> <mod>")
+if len(sys.argv) < 9:
+    print(sys.argv)
+    print("Usage: python run_greedy_interval.py <start_interval> <batch_size> <res> <hosts> <ptile> <swap_alg_name> <workload_base> <original_assignment_base> [mod]")
     sys.exit(1)
 
-interval = int(sys.argv[1])
-res = int(sys.argv[2])
-hosts = int(sys.argv[3])
-ptile = int(sys.argv[4])
-swap_alg_name = sys.argv[5]
-workload_base = sys.argv[6]
-original_assignment_base = sys.argv[7]
-mod = sys.argv[8]
+start_interval = int(sys.argv[1])
+batch_size = int(sys.argv[2])
+res = int(sys.argv[3])
+hosts = int(sys.argv[4])
+ptile = int(sys.argv[5])
+swap_alg_name = sys.argv[6]
+workload_base = sys.argv[7]
+original_assignment_base = sys.argv[8]
+mod = sys.argv[9] if len(sys.argv) >= 10 else ""
 procs = hosts * ptile
+
+# Compute end_interval based on batch_size and a reasonable upper bound
+end_interval = start_interval + batch_size
+
+if end_interval < start_interval:
+    print(f"Skipping: end_interval ({end_interval}) < start_interval ({start_interval})")
+    sys.exit(0)
 
 if swap_alg_name == "greedy":
     swap_alg = greedy_swap
@@ -32,18 +40,24 @@ else:
     print("Invalid swap algorithm")
     sys.exit(1)
 
-if mod == "":
-    workload = Workload.read_csv(Path(f"{workload_base}/c{res}.csv"))
+if mod:
+    workload = Workload.read_csv(f"{workload_base}/{mod}c24_to_c{res}.csv")  # type: ignore
 else:
-    workload = Workload.read_csv(Path(f"{workload_base}/{mod}c24_to_c{res}.csv"))
+    workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
 
-original_assignment = Assignment.read_csv(Path(f"{original_assignment_base}/c{res}_p{procs}.csv"))
+original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")  # type: ignore
 base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}"
 os.makedirs(base, exist_ok=True)
 os.makedirs(f"{base}/intervals", exist_ok=True)
 
-result_path = f'{base}/intervals/interval_{interval}.csv'
-greed_heuristic(
-    workload, original_assignment, interval, swap_alg, result_path
-)
-print(f"Processed interval {interval} -> {result_path}")
+# Cap the end_interval if workload has fewer intervals
+if end_interval > workload.intervals:
+    end_interval = workload.intervals
+    print(f"Adjusted end_interval to {end_interval} based on workload size.")
+
+for interval in range(start_interval, end_interval):
+    result_path = f'{base}/intervals/interval_{interval}.csv'
+    greed_heuristic(
+        workload, original_assignment, interval, swap_alg, result_path
+    )
+    print(f"Processed interval {interval} -> {result_path}")
