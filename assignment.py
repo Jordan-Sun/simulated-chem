@@ -55,7 +55,7 @@ class Assignment:
 
     # Reads the assignment from a NC4 file
     @staticmethod
-    def read_nc4(file_name: os.path) -> "Assignment":
+    def read_nc4(file_name: str) -> "Assignment":
         # Import netCDF4 only when needed
         import netCDF4 as nc
 
@@ -69,17 +69,17 @@ class Assignment:
 
     # Reads the assignment from a csv file
     @staticmethod
-    def read_csv(file_name: os.path) -> "Assignment":
+    def read_csv(file_name: str) -> "Assignment":
         # Read the assignment from the file
         assignment = pd.read_csv(file_name, index_col=0)
         return Assignment(assignment)
 
     # Writes the assignment to a csv file
-    def write_csv(self, file_name: os.path):
+    def write_csv(self, file_name: str):
         self.assignment.to_csv(file_name)
 
     # Writes the assignment to a directory of mapping files for each processor
-    def write_mapping(self, original_assignment: "Assignment", directory: os.path):
+    def write_mapping(self, original_assignment: "Assignment", directory: str):
         # Create the directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -303,8 +303,8 @@ if __name__ == "__main__":
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
     mods = ["nearest", "bilinear", "bicubic", "srcnn", "srcnn_phase"]
-    # strategy = mods[2] + "_" + "greedy"
-    strategy = "greedy"
+    strategy = mods[1] + "_" + "greedy"
+    # strategy = "greedy"
     # strategy = None
 
     # Read the workload
@@ -326,7 +326,6 @@ if __name__ == "__main__":
             workload,
             True,
             f"{og_assignment_base}/c{resolution}_p{procs}_simulation.csv",
-            n_intervals=72,
         )
         print(L)
     else:
@@ -344,17 +343,16 @@ if __name__ == "__main__":
             workload,
             False,
             f"{test_path}/simulation.csv",
-            n_intervals=72,
         )
         print(L)
 
         # Test write mapping
-        # print("Test write mapping")
-        # mapping_start = time.time()
-        # assignment.write_mapping(og_assignment, f"{test_path}/mappings")
-        # mapping_end = time.time()
-        # elapsed = mapping_end - mapping_start
-        # print(f"Mapping time: {elapsed:.2f} seconds")
+        print("Test write mapping")
+        mapping_start = time.time()
+        assignment.write_mapping(og_assignment, f"{test_path}/mappings")
+        mapping_end = time.time()
+        elapsed = mapping_end - mapping_start
+        print(f"Mapping time: {elapsed:.2f} seconds")
 
         # # Test movement
         # print("Test movement")

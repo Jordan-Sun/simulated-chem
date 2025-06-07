@@ -5,7 +5,7 @@ Usage: python run_greedy_interval.py <start_interval> <batch_size> <res> <hosts>
 """
 import sys
 import os
-from greedy import greed_heuristic, greedy_swap, dp_swap
+from greedy import *
 from workload import Workload
 from assignment import Assignment
 
@@ -46,7 +46,14 @@ else:
     workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
 
 original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")  # type: ignore
+
+if hosts > 1:
+    original_assignment.set_processor_groups(hosts, ptile)
+
 base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}"
+if hosts > 1:
+    base += f"_h{hosts}"
+
 os.makedirs(base, exist_ok=True)
 os.makedirs(f"{base}/intervals", exist_ok=True)
 
@@ -57,7 +64,12 @@ if end_interval > workload.intervals:
 
 for interval in range(start_interval, end_interval):
     result_path = f'{base}/intervals/interval_{interval}.csv'
-    greed_heuristic(
-        workload, original_assignment, interval, swap_alg, result_path
-    )
+    if hosts == 1:
+        greed_heuristic_local(
+            workload, original_assignment, interval, swap_alg, result_path
+        )
+    else:
+        greed_heuristic(
+            workload, original_assignment, interval, swap_alg, result_path
+        )
     print(f"Processed interval {interval} -> {result_path}")
