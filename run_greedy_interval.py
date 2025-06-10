@@ -25,6 +25,7 @@ workload_base = sys.argv[7]
 original_assignment_base = sys.argv[8]
 seed = int(sys.argv[9]) if len(sys.argv) >= 10 else 0
 mod = sys.argv[10] if len(sys.argv) >= 11 else ""
+threshold_factor = 0.01
 procs = hosts * ptile
 
 # Compute end_interval based on batch_size and a reasonable upper bound
@@ -70,10 +71,10 @@ for interval in range(start_interval, end_interval):
     result_path = f'{base}/intervals/interval_{interval}.csv'
     if hosts == 1:
         greed_heuristic(
-            workload, original_assignment, interval, swap_alg, result_path
+            workload, original_assignment, interval, swap_alg, result_path, threshold_factor=threshold_factor,
         )
     else:
         greed_heuristic_local(
-            workload, original_assignment, interval, swap_alg, result_path
+            workload, original_assignment, interval, swap_alg, result_path, threshold_factor=threshold_factor,
         )
     print(f"Processed interval {interval} -> {result_path}")

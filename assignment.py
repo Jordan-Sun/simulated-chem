@@ -49,7 +49,6 @@ class Assignment:
             list(indices[i * processors_per_host : (i + 1) * processors_per_host])
             for i in range(num_hosts)
         ]
-        print(self.processor_groups)
 
     # Concatenates a list of assignments into a single assignment
     @staticmethod
@@ -309,8 +308,7 @@ if __name__ == "__main__":
     assignment_base = "test"
     mods = ["nearest", "bilinear", "bicubic", "srcnn", "srcnn_phase"]
     strategy = "greedy"
-    post = "_h16_s123456"
-    # strategy = None
+    post = ""
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
