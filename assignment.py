@@ -2,7 +2,7 @@ from workload import Workload
 
 import os
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ import time
 # Defines the assignment class, a dataclass to store the assignment matrix
 @dataclass
 class Assignment:
-    assignment: pd.DataFrame = field(default=None)
+    assignment: pd.DataFrame = field()
     samples: int = field(init=False, default=0)
     intervals: int = field(init=False, default=0)
     processors: int = field(init=False, default=0)
@@ -35,16 +35,21 @@ class Assignment:
             self.processor_groups = [list(range(self.processors))]
 
     # Method to set processor groups based on the number of hosts and processors per host
-    def set_processor_groups(self, num_hosts: int, processors_per_host: int):
+    def set_processor_groups(self, num_hosts: int, processors_per_host: int, shuffle: Optional[int] = None):
         if self.processors != num_hosts * processors_per_host:
             raise ValueError(
                 f"Total processors ({self.processors}) must equal num_hosts ({num_hosts}) * processors_per_host ({processors_per_host})."
             )
 
+        indices = np.arange(self.processors)
+        if shuffle:
+            np.random.seed(shuffle)  # Set seed for the group to be same across parallel runs
+            np.random.shuffle(indices)
         self.processor_groups = [
-            list(range(i * processors_per_host, (i + 1) * processors_per_host))
+            list(indices[i * processors_per_host : (i + 1) * processors_per_host])
             for i in range(num_hosts)
         ]
+        print(self.processor_groups)
 
     # Concatenates a list of assignments into a single assignment
     @staticmethod
@@ -143,8 +148,8 @@ class Assignment:
         self,
         workload: "Workload",
         static: bool = False,
-        sim_log: str = None,
-        n_intervals: int = None,
+        sim_log: Optional[str] = None,
+        n_intervals: Optional[int] = None,
     ) -> int:
         # Initialize the simulated workload
         L_sim = 0
@@ -200,8 +205,8 @@ class Assignment:
     def movement(
         self,
         original_assignment: "Assignment",
-        send_log: str = None,
-        recv_log: str = None,
+        send_log: Optional[str] = None,
+        recv_log: Optional[str] = None,
     ) -> Tuple[int, int, int, int]:
         # Initialize the samples sent and received
         S_sum = 0
@@ -296,15 +301,15 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == "__main__":
-    resolution = 180
+    resolution = 48
     procs = 576
 
     workload_base = "test/workloads"
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
     mods = ["nearest", "bilinear", "bicubic", "srcnn", "srcnn_phase"]
-    strategy = mods[1] + "_" + "greedy"
-    # strategy = "greedy"
+    strategy = "greedy"
+    post = "_h16_s123456"
     # strategy = None
 
     # Read the workload
@@ -331,7 +336,7 @@ if __name__ == "__main__":
     else:
         # Test the given strategy
         print(f"Testing c{resolution} p{procs} {strategy}")
-        test_path = f"{assignment_base}/{strategy}/c{resolution}_p{procs}"
+        test_path = f"{assignment_base}/{strategy}/c{resolution}_p{procs}{post}"
         # Test read assignment
         print("Test reading from csv file")
         assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
