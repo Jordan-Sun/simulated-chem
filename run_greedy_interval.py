@@ -8,11 +8,12 @@ import os
 from greedy import *
 from workload import Workload
 from assignment import Assignment
+from grouping import group_workload
 
 if len(sys.argv) < 9:
     print(sys.argv)
     print(
-        "Usage: python run_greedy_interval.py <start_interval> <batch_size> <res> <hosts> <ptile> <swap_alg_name> <workload_base> <original_assignment_base> [seed] [mod]")
+        "Usage: python run_greedy_interval.py <start_interval> <batch_size> <res> <hosts> <ptile> <swap_alg_name> <workload_base> <original_assignment_base> [grouping] [mod]")
     sys.exit(1)
 
 start_interval = int(sys.argv[1])
@@ -23,9 +24,9 @@ ptile = int(sys.argv[5])
 swap_alg_name = sys.argv[6]
 workload_base = sys.argv[7]
 original_assignment_base = sys.argv[8]
-seed = int(sys.argv[9]) if len(sys.argv) >= 10 else 0
+grouping = sys.argv[9] if len(sys.argv) >= 10 else None
 mod = sys.argv[10] if len(sys.argv) >= 11 else ""
-threshold_factor = 0.01
+threshold_factor = 0
 procs = hosts * ptile
 
 # Compute end_interval based on batch_size and a reasonable upper bound
@@ -50,14 +51,19 @@ else:
 
 original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")  # type: ignore
 
-if hosts > 1:
-    original_assignment.set_processor_groups(hosts, ptile, shuffle=seed)
-
 base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}"
+
 if hosts > 1:
     base += f"_h{hosts}"
-    if seed:
-        base += f"_s{seed}"
+    if grouping:
+        if grouping.isdigit():
+            seed = int(grouping)
+            base += f"_s{seed}"
+            original_assignment.set_processor_groups(hosts, ptile, shuffle=seed)
+        else:
+            base += f"_f{grouping}"
+            original_assignment.set_processor_groups_from_file(grouping)
+
 
 os.makedirs(base, exist_ok=True)
 os.makedirs(f"{base}/intervals", exist_ok=True)

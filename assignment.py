@@ -50,6 +50,15 @@ class Assignment:
             for i in range(num_hosts)
         ]
 
+    def set_processor_groups_from_file(self, file_name: str):
+        df = pd.read_csv(file_name, header=None)
+        # Verify that the processor groups are valid
+        if df.shape[0] * df.shape[1] != self.processors:
+            raise ValueError(
+                f"Processor groups file must have {self.processors} elements, got {df.shape[0] * df.shape[1]}."
+            )
+        self.processor_groups = df.values.tolist()
+
     # Concatenates a list of assignments into a single assignment
     @staticmethod
     def concatenate(assigns: list["Assignment"]) -> "Assignment":
