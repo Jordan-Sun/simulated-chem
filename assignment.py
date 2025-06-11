@@ -317,7 +317,7 @@ if __name__ == "__main__":
     assignment_base = "test"
     mods = ["nearest", "bilinear", "bicubic", "srcnn", "srcnn_phase"]
     strategy = "greedy"
-    post = ""
+    post = "_h16_fgreedy_groups"
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")

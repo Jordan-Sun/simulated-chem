@@ -8,7 +8,7 @@ import os
 from greedy import *
 from workload import Workload
 from assignment import Assignment
-from grouping import group_workload
+from pathlib import Path
 
 if len(sys.argv) < 9:
     print(sys.argv)
@@ -61,8 +61,9 @@ if hosts > 1:
             base += f"_s{seed}"
             original_assignment.set_processor_groups(hosts, ptile, shuffle=seed)
         else:
-            base += f"_f{grouping}"
-            original_assignment.set_processor_groups_from_file(grouping)
+            path = Path(grouping)
+            base += f"_f{path.stem}"
+            original_assignment.set_processor_groups_from_file(path.as_posix())
 
 
 os.makedirs(base, exist_ok=True)
