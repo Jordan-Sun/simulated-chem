@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 # Helper method to swap columns between two processors with greedy heuristic
 
 
-def greedy_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple[np.ndarray, np.ndarray]:
+def greedy_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple[np.ndarray, np.ndarray, int]:
     """
     Sort both sets by the workload. Then repeatedly swap the most costly column from the higher cost set with the least costly column from the lower cost set until the costs of the higher cost set would be less than the lower cost set. When that happens, swap with the column that would minimize the difference between the costs as the last swap.
     """
@@ -54,7 +54,7 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple
     ids_high = []
     ids_low = []
     # While the cost of the high cost set is greater than the low cost set or one of the sets is exhausted
-    while cost_high > cost_low + threshold and swap_index < set_high.shape[0] and swap_index < set_low.shape[0]:
+    while cost_high > cost_low and cost_high > threshold and swap_index < set_high.shape[0] and swap_index < set_low.shape[0]:
         # Swap the most costly column from the high cost set with the least costly column from the low cost set
         # Update the costs
         cost_high -= set_high[swap_index, 1]
@@ -64,8 +64,8 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple
         ids_low.append(set_high[swap_index, 0])
         swap_index += 1
 
-    # Revert last swap
-    if swap_index > 0:
+    # Revert last swap if at least one swap was made and the cost of the high cost set is now less than the low cost set
+    if swap_index > 0 and cost_high < cost_low:
         swap_index -= 1
         cost_high += set_high[swap_index, 1]
         cost_low -= set_high[swap_index, 1]
@@ -77,7 +77,7 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple
         differences = np.zeros(
             (set_high.shape[0] - swap_index, set_low.shape[0] - swap_index))
         min_diff = np.inf
-        min_pair = None
+        min_pair = (None, None)
         for i in range(swap_index, set_high.shape[0]):
             for j in range(swap_index, set_low.shape[0]):
                 differences[i - swap_index, j - swap_index] = abs(
@@ -85,6 +85,12 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple
                 if differences[i - swap_index, j - swap_index] < min_diff:
                     min_diff = differences[i - swap_index, j - swap_index]
                     min_pair = (i, j)
+
+        # Update the costs
+        cost_high -= set_high[min_pair[0], 1]
+        cost_high += set_low[min_pair[1], 1]
+        cost_low += set_high[min_pair[0], 1]
+        cost_low -= set_low[min_pair[1], 1]
 
         # Fill in the remaining indicies
         for i in range(swap_index, set_high.shape[0]):
@@ -104,15 +110,18 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple
         for j in range(swap_index, set_low.shape[0]):
             ids_low.append(set_low[j, 0])
 
-    # Return the indicies of the columns to swap
+    # Return the indicies of the columns to swap, and the maximum cost after the swap
+    max_cost = max(cost_high, cost_low)
     if costA > costB:
-        return np.array(ids_high, dtype=int), np.array(ids_low, dtype=int)
+        return np.array(ids_high, dtype=int), np.array(ids_low, dtype=int), max_cost
     else:
-        return np.array(ids_low, dtype=int), np.array(ids_high, dtype=int)
+        return np.array(ids_low, dtype=int), np.array(ids_high, dtype=int), max_cost
 
 
 # Helper method to swap columns between two processors with dynamic programming
-def dp_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple[np.ndarray, np.ndarray]:
+def dp_swap(
+    setA: np.ndarray, setB: np.ndarray, _: int = 0
+) -> Tuple[np.ndarray, np.ndarray, int]:
     """
     Constructs an DP table that minimizes the absolute difference between the sums of the columns in setA and setB after swapping.
     """
@@ -185,18 +194,20 @@ def dp_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple[np.
     # Reverse to restore order
     ids_setA = np.array(ids_setA[::-1], dtype=int)
     ids_setB = np.array(ids_setB[::-1], dtype=int)
-    return ids_setA, ids_setB
+    # Threshold not implemented for DP swap, return 0 for max cost
+    return ids_setA, ids_setB, 0
+
 
 # Greedy one-to-one dynamic reassignment solution through greedy heuristic
 
 
 def greed_heuristic(
-        workload: Workload,
-        original_assignment: Assignment,
-        interval: int = 0,
-        swap_alg=greedy_swap,
-        result_path: Optional[str] = None,
-        threshold_factor: float = 0
+    workload: Workload,
+    original_assignment: Assignment,
+    interval: int = 0,
+    swap_alg=greedy_swap,
+    result_path: Optional[str] = None,
+    enable_threshold: bool = False,
 ) -> Assignment:
     # Check if an assignment is already at the result path
     if result_path is not None:
@@ -222,14 +233,6 @@ def greed_heuristic(
 
     sorted_processors = np.argsort(processor_costs)
 
-    # multiply the maximum cost by the threshold percentage to get the threshold
-    if threshold_factor > 0:
-        max_cost = processor_costs.max()
-        threshold = int(max_cost * threshold_factor / 100)
-        print(f"Threshold for interval {interval} is {threshold} ({(threshold_factor * 100):.2f}% of max cost {max_cost})")
-    else:
-        threshold = 0
-
     # prepare processor pairs based on sorted costs
     half = len(sorted_processors) // 2
     tasks = np.array([(processor_columns[sorted_processors[i]], processor_columns[sorted_processors[-i - 1]])
@@ -239,7 +242,17 @@ def greed_heuristic(
 
     assignments = np.full(workload.samples, -1, dtype=int)
 
-    results = [swap_alg(pairs_A, pairs_B, threshold) for pairs_A, pairs_B in tasks]
+    results = []
+    if enable_threshold:
+        last_max = 0
+        # Preallocate results for efficiency
+        results = [None] * len(tasks)
+        for idx, (pairs_A, pairs_B) in enumerate(tasks):
+            set_A, set_B, max_cost = swap_alg(pairs_A, pairs_B, last_max)
+            results[idx] = (set_A, set_B)
+            last_max = max_cost
+    else:
+        results = [swap_alg(pairs_A, pairs_B, 0) for pairs_A, pairs_B in tasks]
 
     # update assignments based on results using indices
     for i in range(len(results)):
@@ -266,12 +279,12 @@ def greed_heuristic(
 
 
 def greed_heuristic_local(
-        workload: Workload,
-        original_assignment: Assignment,
-        interval: int = 0,
-        swap_alg=dp_swap,
-        result_path: Optional[str] = None,
-        threshold_factor: float = 0
+    workload: Workload,
+    original_assignment: Assignment,
+    interval: int = 0,
+    swap_alg=dp_swap,
+    result_path: Optional[str] = None,
+    enable_threshold: bool = False,
 ) -> Assignment:
     # Check if an assignment is already at the result path
     if result_path is not None:
@@ -303,16 +316,6 @@ def greed_heuristic_local(
         sorted_processors = sorted(
             group, key=lambda proc: processor_costs[proc])
 
-        # multiply the maximum cost by the threshold percentage to get the threshold
-        if threshold_factor > 0:
-            max_cost = processor_costs.max()
-            threshold = int(max_cost * threshold_factor)
-            group_id += 1
-            print(
-                f"Threshold for interval {interval}, group {group_id} is {threshold} ({(threshold_factor * 100):.2f}% of max cost {max_cost})")
-        else:
-            threshold = 0
-
         # prepare processor pairs based on sorted costs
         half = len(sorted_processors) // 2
         tasks = np.array([(processor_columns[sorted_processors[i]], processor_columns[sorted_processors[-i - 1]])
@@ -320,7 +323,16 @@ def greed_heuristic_local(
         pairs_index = np.array([(sorted_processors[i], sorted_processors[-i - 1])
                                 for i in range(half)], dtype=int)
 
-        results = [swap_alg(pairs_A, pairs_B, threshold) for pairs_A, pairs_B in tasks]
+        if enable_threshold:
+            last_max = 0
+            # Preallocate results for efficiency
+            results = [None] * len(tasks)
+            for idx, (pairs_A, pairs_B) in enumerate(tasks):
+                set_A, set_B, max_cost = swap_alg(pairs_A, pairs_B, last_max)
+                results[idx] = (set_A, set_B)
+                last_max = max_cost
+        else:
+            results = [swap_alg(pairs_A, pairs_B, 0) for pairs_A, pairs_B in tasks]
 
         # update assignments based on results using indices
         for i in range(len(results)):
