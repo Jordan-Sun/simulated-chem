@@ -26,7 +26,7 @@ workload_base = sys.argv[7]
 original_assignment_base = sys.argv[8]
 grouping = sys.argv[9] if len(sys.argv) >= 10 else None
 mod = sys.argv[10] if len(sys.argv) >= 11 else ""
-threshold_factor = 0
+threshold_factor = 0.1
 procs = hosts * ptile
 
 # Compute end_interval based on batch_size and a reasonable upper bound
@@ -51,7 +51,7 @@ else:
 
 original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")  # type: ignore
 
-base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}"
+base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}_t{threshold_factor}"
 
 if hosts > 1:
     base += f"_h{hosts}"
