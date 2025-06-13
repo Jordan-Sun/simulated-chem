@@ -62,7 +62,9 @@ def mip_group_workload(
     if n_threads > 1:
         print(f"Using {n_threads} threads for MIP solver.")
         model.setParam('parallel/maxnthreads', n_threads)
-    model.optimize()
+        model.solveConcurrent()
+    else:
+        model.optimize()
 
     # Extract group assignments
     groups = np.empty((num_groups, proc_per_group), dtype=int)
@@ -128,5 +130,5 @@ if __name__ == "__main__":
     # np.savetxt(greedy_output, greedy_groups, delimiter=",", fmt="%d")
 
     mip_output = f"{output_base}/mip_groups.csv"
-    mip_groups = mip_group_workload(processor_workload, num_groups, n_threads=64)
+    mip_groups = mip_group_workload(processor_workload, num_groups, n_threads=32)
     np.savetxt(mip_output, mip_groups, delimiter=",", fmt="%d")
