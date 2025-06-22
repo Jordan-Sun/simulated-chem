@@ -27,7 +27,7 @@ original_assignment_base = sys.argv[8]
 grouping = sys.argv[9] if len(sys.argv) >= 10 else None
 mod = sys.argv[10] if len(sys.argv) >= 11 else ""
 procs = hosts * ptile
-enable_threshold = True
+enable_threshold = False
 
 # Compute end_interval based on batch_size and a reasonable upper bound
 end_interval = start_interval + batch_size

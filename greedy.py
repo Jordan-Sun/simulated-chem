@@ -252,7 +252,8 @@ def greed_heuristic(
             results[idx] = (set_A, set_B)
             last_max = max_cost
     else:
-        results = [swap_alg(pairs_A, pairs_B, 0) for pairs_A, pairs_B in tasks]
+        swap_results = [swap_alg(pairs_A, pairs_B, 0) for pairs_A, pairs_B in tasks]
+        results = [(set_A, set_B) for set_A, set_B, _ in swap_results]
 
     # update assignments based on results using indices
     for i in range(len(results)):
@@ -332,7 +333,8 @@ def greed_heuristic_local(
                 results[idx] = (set_A, set_B)
                 last_max = max_cost
         else:
-            results = [swap_alg(pairs_A, pairs_B, 0) for pairs_A, pairs_B in tasks]
+            swap_results = [swap_alg(pairs_A, pairs_B, 0) for pairs_A, pairs_B in tasks]
+            results = [(set_A, set_B) for set_A, set_B, _ in swap_results]
 
         # update assignments based on results using indices
         for i in range(len(results)):

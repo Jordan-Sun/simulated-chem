@@ -306,17 +306,96 @@ class Assignment:
             g.write(f"Total,{R_sum},Max,{R_max}\n")
         return S_sum, R_sum, S_max, R_max
 
+    # Movement of samples between nodes
+    def group_movement(
+        self,
+        original_assignment: "Assignment",
+        intra_log: Optional[str] = None,
+        inter_log: Optional[str] = None,
+    ) -> Tuple[int, int, int, int]:
+        # Initialize the samples moved intra and inter node
+        intra_sum = 0
+        inter_sum = 0
+        intra_max = 0
+        inter_max = 0
+        # Open the log file if it is provided
+        f = None
+        g = None
+        if intra_log is not None:
+            f = open(intra_log, "w")
+            f.write(
+                "Interval,"
+                + ",".join([f"Processor{i}" for i in range(self.processors)])
+                + ",Total,Max\n"
+            )
+        if inter_log is not None:
+            g = open(inter_log, "w")
+            g.write(
+                "Interval,"
+                + ",".join([f"Processor{i}" for i in range(self.processors)])
+                + ",Total,Max\n"
+            )
+        # Iterate over the intervals
+        for interval in range(self.intervals):
+            print(f"Movement interval {interval + 1}/{self.intervals}", end="\r")
+            # Store the samples moved intra and inter node for each processor
+            intra_interval = np.zeros(self.processors, dtype=int)
+            inter_interval = np.zeros(self.processors, dtype=int)
+            # Iterate over the samples
+            for sample in range(self.samples):
+                # Obtain the processor from the original assignment
+                source = original_assignment.assignment.iloc[sample, 0]
+                # Obtain the processor to which the sample is assigned
+                target = self.assignment.iloc[sample, interval]
+                # Increment the samples sent and received
+                if source != target:
+                    # Check if they are in the same group
+                    if any(
+                        source in group and target in group
+                        for group in self.processor_groups
+                    ):
+                        intra_interval[source] += 1
+                        intra_interval[target] += 1
+                    else:
+                        inter_interval[source] += 1
+                        inter_interval[target] += 1
+            # Add to the total and max samples moved intra and inter node
+            intra_sum += sum(intra_interval)
+            inter_sum += sum(inter_interval)
+            intra_max += max(intra_interval)
+            inter_max += max(inter_interval)
+            # Write the interval samples moved intra and inter node to the log files
+            if f:
+                f.write(
+                    f"{interval},"
+                    + ",".join([str(S) for S in intra_interval])
+                    + f",{sum(intra_interval)},{max(intra_interval)}\n"
+                )
+            if g:
+                g.write(
+                    f"{interval},"
+                    + ",".join([str(S) for S in inter_interval])
+                    + f",{sum(inter_interval)},{max(inter_interval)}\n"
+                )
+        print()
+        # Print the total and max samples moved intra and inter node
+        print(f"Total intra-node samples moved: {intra_sum}, Max: {intra_max}")
+        print(f"Total inter-node samples moved: {inter_sum}, Max: {inter_max}")
+        # Return the total and max samples moved intra and inter node
+        return intra_sum, inter_sum, intra_max, inter_max
 
 # If ran as main, test the assignment class
 if __name__ == "__main__":
-    resolution = 48
-    procs = 576
+    resolution = 180
+    num_hosts = 16
+    procs_per_host = 36
+    procs = num_hosts * procs_per_host
 
     workload_base = "test/workloads"
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
     strategy = "greedy"
-    post = "_th"
+    post = "_h16_fgroups_mod16"
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
@@ -348,6 +427,7 @@ if __name__ == "__main__":
         assignment = Assignment.read_csv(f"{test_path}/assignment.csv")
         assert assignment.assignment.shape[0] == 6 * resolution * resolution
         assert assignment.processors == procs
+
         # Test simulate
         print("Test simulate")
         L = assignment.simulate(
@@ -369,3 +449,10 @@ if __name__ == "__main__":
         # print("Test movement")
         # S_sum, R_sum, S_max, R_max = assignment.movement(og_assignment, f"{test_path}/send.csv", f"{test_path}/recv.csv")
         # print(S_sum, R_sum, S_max, R_max)
+
+        # # Test group movement
+        # print("Test group movement")
+        # assignment.set_processor_groups(num_hosts, procs_per_host)
+        # intra_sum, inter_sum, intra_max, inter_max = assignment.group_movement(
+        #     og_assignment, f"{test_path}/intra.csv", f"{test_path}/inter.csv"
+        # )

@@ -22,7 +22,7 @@ grouping = sys.argv[6] if len(sys.argv) > 6 else 0
 mod = sys.argv[7] if len(sys.argv) > 7 else ""
 procs = hosts * ptile
 
-base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}_th"
+base = f"test/{mod}{swap_alg_name}/c{res}_p{procs}"
 if hosts > 1:
     base += f"_h{hosts}"
     if grouping:
