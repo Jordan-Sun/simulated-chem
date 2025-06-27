@@ -395,7 +395,7 @@ if __name__ == "__main__":
     og_assignment_base = "test/og_assignments"
     assignment_base = "test"
     strategy = "greedy"
-    post = "_h16_fgroups_mod16"
+    post = "_h16_fmip_groups_0.01"
 
     # Read the workload
     workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
