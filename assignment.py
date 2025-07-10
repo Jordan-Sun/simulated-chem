@@ -386,19 +386,20 @@ class Assignment:
 
 # If ran as main, test the assignment class
 if __name__ == "__main__":
-    resolution = 180
+    resolution = 360
     num_hosts = 16
     procs_per_host = 36
     procs = num_hosts * procs_per_host
 
     workload_base = "test/workloads"
-    og_assignment_base = "test/og_assignments"
+    og_assignment_base = "test/generated_assignments"
     assignment_base = "test"
-    strategy = "greedy"
+    strategy = None
     post = "_h16_fmip_groups_0.01"
 
     # Read the workload
-    workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
+    # workload = Workload.read_csv(f"{workload_base}/c{resolution}.csv")
+    workload = Workload.read_csv("test/workloads/bilinear_c180_to_c360.csv")
 
     print(f"Testing c{resolution} p{procs} original")
     # Test reading back from csv file

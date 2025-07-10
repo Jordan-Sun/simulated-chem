@@ -120,13 +120,13 @@ class Workload:
 # If ran as main, test the workload class
 if __name__ == "__main__":
     # Read the workload
-    workload = Workload.read_csv("test/workloads/c24.csv")
+    workload = Workload.read_csv("test/workloads/c180.csv")
     # Upscale the workload to a different resolution
-    target_resolution = 90
+    target_resolution = 360
     upscale_dict = {
-        0: "nearest",
+        # 0: "nearest",
         1: "bilinear",
-        3: "bicubic",
+        # 3: "bicubic",
     }
     import concurrent.futures
 
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         order, method = args
         upscaled_workload = workload.upscale(target_resolution, order=order)
         upscaled_workload.write_csv(
-            f"test/workloads/{method}_c24_to_c{target_resolution}.csv"
+            f"test/workloads/{method}_c180_to_c{target_resolution}.csv"
         )
 
     with concurrent.futures.ThreadPoolExecutor() as executor:

@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 from pyscipopt import Model
 
+import os
+
 def workload_per_processor(workload: Workload, original_assignment: Assignment) -> pd.DataFrame:
     """
     Computes the workload on each processor based on the original assignment.
@@ -125,9 +127,11 @@ if __name__ == "__main__":
 
     processor_workload = workload_per_processor(workload, original_assignment)
 
-    # greedy_output = f"{output_base}/greedy_groups.csv"
-    # greedy_groups = greedy_group_workload(processor_workload, num_groups)
-    # np.savetxt(greedy_output, greedy_groups, delimiter=",", fmt="%d")
+    os.makedirs(output_base, exist_ok=True)
+
+    greedy_output = f"{output_base}/greedy_groups.csv"
+    greedy_groups = greedy_group_workload(processor_workload, num_groups)
+    np.savetxt(greedy_output, greedy_groups, delimiter=",", fmt="%d")
 
     mip_output = f"{output_base}/mip_groups.csv"
     mip_groups = mip_group_workload(processor_workload, num_groups, n_threads=32)
