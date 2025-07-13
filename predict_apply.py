@@ -43,7 +43,10 @@ def predict_future(model, seed, num_predictions):
             input_seq = seed.unsqueeze(0)  # (1, T, 1, 6H, W)
             pred = model(input_seq) * scaling_factor  # (1, 1, 6H, W)
             predictions.append(pred[0].cpu())  # (1, 6H, W)
-        seed = torch.cat([seed[1:], pred], dim=0)  # Slide window forward
+            noise = torch.randn_like(pred) * 0.01  # Noise to prevent same output
+            noisy_pred = pred + noise
+            seed = torch.cat([seed[1:], noisy_pred], dim=0)
+
     return torch.stack(predictions)  # (T, 1, 6H, W)
 
 

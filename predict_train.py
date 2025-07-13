@@ -22,9 +22,9 @@ class TemporalWorkloadPredictor(nn.Module):
 
         self.encoder = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=5, padding=2),
-            nn.Softplus(),
+            nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=5, padding=2),
-            nn.Softplus(),
+            nn.ReLU(),
         )
 
         self.temporal_model = nn.LSTM(
@@ -37,14 +37,14 @@ class TemporalWorkloadPredictor(nn.Module):
 
         self.decoder = nn.Sequential(
             nn.Linear(hidden_dim, 256 * 12 * 12),
-            nn.Softplus(),
+            nn.ReLU(),
             nn.Unflatten(1, (256, 12, 12)),
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
-            nn.Softplus(),
+            nn.ReLU(),
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
-            nn.Softplus(),
+            nn.ReLU(),
             nn.ConvTranspose2d(64, 1, kernel_size=4, stride=2, padding=1),
-            nn.Softplus(),
+            nn.ReLU(),
         )
 
     def forward(self, x):  # (B, T, 1, 6H, W)
@@ -108,10 +108,10 @@ if __name__ == "__main__":
     train_loader = DataLoader(
         TensorDataset(train_x, train_y), batch_size=8, shuffle=True
     )
-    criterion = nn.MSELoss()
+    criterion = torch.nn.SmoothL1Loss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=5
+        optimizer, mode="min", factor=0.5, patience=20
     )
 
     model_dir = "models"
