@@ -6,7 +6,6 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from scipy.stats import spearmanr, pearsonr
 import matplotlib.pyplot as plt
 import time
 
@@ -14,40 +13,53 @@ scaling_factor = 1000.0
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 
-# Input shape: (batch_size, seq_len, 6, H, W)
-# Output shape: (batch_size, 6, H, W) -- next time step
 class TemporalWorkloadPredictor(nn.Module):
-    def __init__(self, H: int, W: int, hidden_dim: int = 256, num_layers: int = 1):
+    def __init__(self, H: int, W: int, hidden_dim: int = 512, num_layers: int = 2):
         super().__init__()
-        self.H = H
+        self.H = H * 6
         self.W = W
         self.hidden_dim = hidden_dim
 
-        self.spatial_encoder = nn.Sequential(
-            nn.Conv2d(6, 32, kernel_size=3, padding=1),
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=5, padding=2),
             nn.Softplus(),
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
             nn.Softplus(),
         )
 
         self.temporal_model = nn.LSTM(
-            64 * H * W, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True
+            input_size=64 * self.H * self.W,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            dropout=0.1 if num_layers > 1 else 0.0,
+            batch_first=True,
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(hidden_dim, 64 * H * W),
-            nn.Unflatten(1, (64, H, W)),
-            nn.Conv2d(64, 6, kernel_size=1),
+            nn.Linear(hidden_dim, 256 * 12 * 12),
+            nn.Softplus(),
+            nn.Unflatten(1, (256, 12, 12)),
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
+            nn.Softplus(),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
+            nn.Softplus(),
+            nn.ConvTranspose2d(64, 1, kernel_size=4, stride=2, padding=1),
+            nn.Softplus(),
         )
 
-    def forward(self, x):  # x: (B, T, 6, H, W)
+    def forward(self, x):  # (B, T, 1, 6H, W)
         B, T, C, H, W = x.shape
-        x = x.view(B * T, C, H, W)
-        x = self.spatial_encoder(x)  # (B*T, 64, H, W)
-        x = x.view(B, T, -1)  # (B, T, 64*H*W)
+        x = x.view(B * T, 1, H, W)
+        x = self.encoder(x)
+        x = x.view(B, T, -1)
         out, _ = self.temporal_model(x)
-        x = self.decoder(out[:, -1])  # Use last time step output
-        return x  # (B, 6, H, W)
+        last = out[:, -1]
+        x = self.decoder(last)
+        x = nn.functional.interpolate(
+            x, size=(self.H, self.W), mode="bilinear", align_corners=False
+        )
+        x = x.view(B, 1, self.H, self.W)
+        return x
 
 
 def extract_resolution(workload: Workload):
@@ -61,11 +73,12 @@ def prepare_temporal_dataset(workload, sequence_length=6, train_ratio=0.8):
     H, W, T = extract_resolution(workload)
     raw = workload.workload.values.reshape(6, H, W, T).transpose(3, 0, 1, 2)
 
+    raw = raw.reshape(T, 1, 6 * H, W)
     num_samples = T - sequence_length
     num_train = int(num_samples * train_ratio)
 
-    x_np = np.empty((num_samples, sequence_length, 6, H, W), dtype=np.float32)
-    y_np = np.empty((num_samples, 6, H, W), dtype=np.float32)
+    x_np = np.empty((num_samples, sequence_length, 1, 6 * H, W), dtype=np.float32)
+    y_np = np.empty((num_samples, 1, 6 * H, W), dtype=np.float32)
 
     for i in range(num_samples):
         x_np[i] = raw[i : i + sequence_length]
@@ -76,7 +89,6 @@ def prepare_temporal_dataset(workload, sequence_length=6, train_ratio=0.8):
     x_test = torch.from_numpy(x_np[num_train:])
     y_test = torch.from_numpy(y_np[num_train:])
 
-    # Normalize target values
     y_train = y_train / scaling_factor
     y_test = y_test / scaling_factor
 
@@ -84,53 +96,32 @@ def prepare_temporal_dataset(workload, sequence_length=6, train_ratio=0.8):
 
 
 if __name__ == "__main__":
-    # Load and prepare data
-    res = 90
+    res = 24
     workload_path = f"test/workloads/c{res}.csv"
     workload = Workload.read_csv(workload_path)
-    (train_x, train_y), (test_x, test_y), H, W = prepare_temporal_dataset(
-        workload, sequence_length=6
-    )
+    (train_x, train_y), (test_x, test_y), H, W = prepare_temporal_dataset(workload)
 
-    # Train model
-    hidden_dim = 256
-    num_layers = 2
-    model = TemporalWorkloadPredictor(H, W, hidden_dim=hidden_dim, num_layers=num_layers)
+    model = TemporalWorkloadPredictor(H, W, hidden_dim=256, num_layers=3)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
     train_loader = DataLoader(
         TensorDataset(train_x, train_y), batch_size=8, shuffle=True
     )
-
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=5
+    )
 
-    start_epoch = 0
-    num_epochs = 50
-    losses = []
     model_dir = "models"
     os.makedirs(model_dir, exist_ok=True)
-    latest_path = os.path.join(model_dir, f"norm_softmax{num_layers}*{hidden_dim}_c{res}_last.pth")
+    model_path = os.path.join(model_dir, f"conv_transpose2d_fullgrid_c{res}.pth")
 
-    # Resume if possible
-    if os.path.exists(latest_path):
-        state = torch.load(latest_path)
-        model.load_state_dict(state["model_state"])
-        optimizer.load_state_dict(state["optimizer_state"])
-        start_epoch = state["epoch"] + 1
-        losses = state["losses"]
-        print(f"Resuming from epoch {start_epoch}")
-
-    end_epoch = start_epoch + num_epochs
-
-    print(f"Training for {num_epochs} epochs starting from epoch {start_epoch + 1}")
-
-    for epoch in range(start_epoch, end_epoch):
+    losses = []
+    for epoch in range(50):
         model.train()
-        total_loss = 0.0
-        start_time = time.time()
-
+        total_loss = 0
         for xb, yb in train_loader:
             xb, yb = xb.to(device), yb.to(device)
             pred = model(xb)
@@ -141,34 +132,27 @@ if __name__ == "__main__":
             total_loss += loss.item() * xb.size(0)
 
         avg_loss = total_loss / len(train_x)
+        scheduler.step(avg_loss)
         losses.append(avg_loss)
-        elapsed = time.time() - start_time
-        print(
-            f"Epoch {epoch+1}/{num_epochs} - Loss: {avg_loss:.6f} - Time: {elapsed:.2f}s"
-        )
+        print(f"Epoch {epoch+1}/50 - Loss: {avg_loss:.6f}")
 
-    # Final save
-    torch.save(
-        {
-            "epoch": end_epoch - 1,
-            "model_state": model.state_dict(),
-            "optimizer_state": optimizer.state_dict(),
-            "losses": losses,
-        },
-        latest_path,
-    )
+    torch.save({"model_state": model.state_dict(), "losses": losses}, model_path)
 
-    # Evaluate model
+    # Eval
+    test_loader = DataLoader(TensorDataset(test_x, test_y), batch_size=8)
     model.eval()
+    test_loss = 0.0
     with torch.no_grad():
-        preds = model(test_x.to(device))  # Rescale predictions
-        test_loss = criterion(preds, test_y.to(device)).item()
-        print(f"Test MSE: {test_loss:.6f}")
+        for xb, yb in test_loader:
+            xb, yb = xb.to(device), yb.to(device)
+            pred = model(xb)
+            test_loss += criterion(pred, yb).item() * xb.size(0)
+    test_loss /= len(test_x)
+    print(f"Test MSE: {test_loss:.6f}")
 
-    # Plot loss
     plt.plot(range(1, len(losses) + 1), losses)
+    plt.title("Training Loss")
     plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Training Loss Over Epochs")
+    plt.ylabel("MSE Loss")
     plt.grid(True)
     plt.show()
