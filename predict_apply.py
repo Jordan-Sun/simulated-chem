@@ -6,7 +6,7 @@ from workload import Workload
 from predict_train import TemporalWorkloadPredictor, extract_resolution, scaling_factor
 
 # --- Config ---
-model_path = "models/norm_softmax2*256_c90_last.pth"
+model_path = "models/log_softmax2*256_c90_last.pth"
 workload_path = "test/workloads/c90.csv"
 output_csv = "test/workloads/softmax_c90_month.csv"
 sequence_length = 6
@@ -39,7 +39,7 @@ def predict_future(model, seed_sequence, num_predictions):
 
     for _ in range(num_predictions):
         with torch.no_grad():
-            pred = model(seed_sequence) * scaling_factor  # Rescale prediction
+            pred = torch.expm1(model(seed_sequence))
             predictions.append(pred[0].cpu())
 
         seed_sequence = torch.cat([seed_sequence[:, 1:], pred.unsqueeze(1)], dim=1)
