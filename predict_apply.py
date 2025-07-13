@@ -6,16 +6,16 @@ from workload import Workload
 from predict_train import TemporalWorkloadPredictor, extract_resolution, scaling_factor
 
 # --- Config ---
-model_path = "models/norm_softmax_c90_last.pth"
+model_path = "models/norm_softmax2*256_c90_last.pth"
 workload_path = "test/workloads/c90.csv"
-output_csv = "softmax_c90_month.csv"
+output_csv = "test/workloads/softmax_c90_month.csv"
 sequence_length = 6
 num_predictions = 720  # 30 days hourly
 
 # --- Load model ---
 workload = Workload.read_csv(workload_path)
 H, W, _ = extract_resolution(workload)
-model = TemporalWorkloadPredictor(H, W)
+model = TemporalWorkloadPredictor(H, W, hidden_dim=256, num_layers=2)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.load_state_dict(torch.load(model_path, map_location=device)["model_state"])
 model.to(device)
