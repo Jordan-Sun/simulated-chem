@@ -36,7 +36,6 @@ class TemporalWorkloadPredictor(nn.Module):
 
         self.decoder = nn.Sequential(
             nn.Linear(hidden_dim, 64 * H * W),
-            nn.Softplus(),
             nn.Unflatten(1, (64, H, W)),
             nn.Conv2d(64, 6, kernel_size=1),
         )
@@ -78,8 +77,8 @@ def prepare_temporal_dataset(workload, sequence_length=6, train_ratio=0.8):
     y_test = torch.from_numpy(y_np[num_train:])
 
     # Normalize target values
-    y_train = torch.log1p(y_train)
-    y_test = torch.log1p(y_test)
+    y_train = y_train / scaling_factor
+    y_test = y_test / scaling_factor
 
     return (x_train, y_train), (x_test, y_test), H, W
 
@@ -112,7 +111,7 @@ if __name__ == "__main__":
     losses = []
     model_dir = "models"
     os.makedirs(model_dir, exist_ok=True)
-    latest_path = os.path.join(model_dir, f"log_softmax{num_layers}*{hidden_dim}_c{res}_last.pth")
+    latest_path = os.path.join(model_dir, f"norm_softmax{num_layers}*{hidden_dim}_c{res}_last.pth")
 
     # Resume if possible
     if os.path.exists(latest_path):
