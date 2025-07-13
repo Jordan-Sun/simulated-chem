@@ -1,4 +1,6 @@
 #!/bin/zsh
+set -e
+
 # batch_run_greedy.sh
 MAX_MEM_KB=$((16 * 1024 * 1024))  # 16 GB
 ulimit -v $MAX_MEM_KB
@@ -6,14 +8,14 @@ ulimit -v $MAX_MEM_KB
 # Configuration section: set your values here
 NUM_INTERVALS=504
 BATCH_SIZE=12
-RES=180
-HOSTS=16
+RES=48
+HOSTS=4
 PTILE=36
 SWAP_ALG_NAME="greedy"
 WORKLOAD_BASE="test/workloads/"
 ORIGINAL_ASSIGNMENT_BASE="test/og_assignments/"
 MOD=""  # Set to empty string if not using a mod
-GROUP="test/processor_group/c48_p576/mip_groups_0.01.csv"  # Set a seed or file for reproducibility
+GROUP="test/processor_group/c48_p144/round_robin.csv"  # Set a seed or file for reproducibility
 
 MAX_PARALLEL=$(($(nproc) / 2))
 

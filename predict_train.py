@@ -10,27 +10,33 @@ from scipy.stats import spearmanr, pearsonr
 import matplotlib.pyplot as plt
 import time
 
+scaling_factor = 1000.0
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 
 # Input shape: (batch_size, seq_len, 6, H, W)
 # Output shape: (batch_size, 6, H, W) -- next time step
 class TemporalWorkloadPredictor(nn.Module):
-    def __init__(self, H: int, W: int):
+    def __init__(self, H: int, W: int, hidden_dim: int = 256, num_layers: int = 1):
         super().__init__()
         self.H = H
         self.W = W
+        self.hidden_dim = hidden_dim
 
         self.spatial_encoder = nn.Sequential(
             nn.Conv2d(6, 32, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.Softplus(),
         )
 
-        self.temporal_model = nn.LSTM(64 * H * W, 256, batch_first=True)
+        self.temporal_model = nn.LSTM(
+            64 * H * W, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True
+        )
 
         self.decoder = nn.Sequential(
-            nn.Linear(256, 64 * H * W),
-            nn.ReLU(),
+            nn.Linear(hidden_dim, 64 * H * W),
+            nn.Softplus(),
             nn.Unflatten(1, (64, H, W)),
             nn.Conv2d(64, 6, kernel_size=1),
         )
@@ -71,22 +77,32 @@ def prepare_temporal_dataset(workload, sequence_length=6, train_ratio=0.8):
     x_test = torch.from_numpy(x_np[num_train:])
     y_test = torch.from_numpy(y_np[num_train:])
 
+    # Normalize target values
+    y_train /= scaling_factor
+    y_test /= scaling_factor
+
     return (x_train, y_train), (x_test, y_test), H, W
+
 
 if __name__ == "__main__":
     # Load and prepare data
-    workload_path = "test/workloads/c90.csv"
+    res = 90
+    workload_path = f"test/workloads/c{res}.csv"
     workload = Workload.read_csv(workload_path)
     (train_x, train_y), (test_x, test_y), H, W = prepare_temporal_dataset(
         workload, sequence_length=6
     )
 
     # Train model
-    model = TemporalWorkloadPredictor(H, W)
+    hidden_dim = 256
+    num_layers = 2
+    model = TemporalWorkloadPredictor(H, W, hidden_dim=hidden_dim, num_layers=num_layers)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
-    train_loader = DataLoader(TensorDataset(train_x, train_y), batch_size=8, shuffle=True)
+    train_loader = DataLoader(
+        TensorDataset(train_x, train_y), batch_size=8, shuffle=True
+    )
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
@@ -96,7 +112,7 @@ if __name__ == "__main__":
     losses = []
     model_dir = "models"
     os.makedirs(model_dir, exist_ok=True)
-    latest_path = os.path.join(model_dir, "temporal_c90_last.pth")
+    latest_path = os.path.join(model_dir, f"norm_softmax{num_layers}*{hidden_dim}_c{res}_last.pth")
 
     # Resume if possible
     if os.path.exists(latest_path):
@@ -128,7 +144,9 @@ if __name__ == "__main__":
         avg_loss = total_loss / len(train_x)
         losses.append(avg_loss)
         elapsed = time.time() - start_time
-        print(f"Epoch {epoch+1}/{end_epoch} - Loss: {avg_loss:.6f} - Time: {elapsed:.2f}s")
+        print(
+            f"Epoch {epoch+1}/{num_epochs} - Loss: {avg_loss:.6f} - Time: {elapsed:.2f}s"
+        )
 
     # Final save
     torch.save(
@@ -144,7 +162,7 @@ if __name__ == "__main__":
     # Evaluate model
     model.eval()
     with torch.no_grad():
-        preds = model(test_x.to(device))
+        preds = model(test_x.to(device))  # Rescale predictions
         test_loss = criterion(preds, test_y.to(device)).item()
         print(f"Test MSE: {test_loss:.6f}")
 
@@ -154,4 +172,4 @@ if __name__ == "__main__":
     plt.ylabel("Loss")
     plt.title("Training Loss Over Epochs")
     plt.grid(True)
-    plt.savefig(os.path.join(model_dir, "training_loss.png"))
+    plt.show()
