@@ -10,13 +10,16 @@ from assignment import Assignment
 import os
 import numpy as np
 import pandas as pd
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from functools import partial
+from concurrent.futures import ThreadPoolExecutor
 
 # import time
 
 # Helper method to swap columns between two processors with greedy heuristic
-def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+
+
+def greedy_swap(setA: np.ndarray, setB: np.ndarray, threshold: int = 0) -> Tuple[np.ndarray, np.ndarray, int]:
     """
     Sort both sets by the workload. Then repeatedly swap the most costly column from the higher cost set with the least costly column from the lower cost set until the costs of the higher cost set would be less than the lower cost set. When that happens, swap with the column that would minimize the difference between the costs as the last swap.
     """
@@ -28,8 +31,8 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndar
         setB = np.array(setB, dtype=int)
         print("Warning: setB was not a numpy array")
     # Find the processor with the higher cost
-    costA = np.sum(setA[:,1])
-    costB = np.sum(setB[:,1])
+    costA = np.sum(setA[:, 1])
+    costB = np.sum(setB[:, 1])
 
     # Sort high cost set in descending order
     # Sort low cost set in ascending order
@@ -50,7 +53,8 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndar
     swap_index = 0
     ids_high = []
     ids_low = []
-    while cost_high > cost_low:
+    # While the cost of the high cost set is greater than the low cost set or one of the sets is exhausted
+    while cost_high > cost_low and cost_high > threshold and swap_index < set_high.shape[0] and swap_index < set_low.shape[0]:
         # Swap the most costly column from the high cost set with the least costly column from the low cost set
         # Update the costs
         cost_high -= set_high[swap_index, 1]
@@ -60,46 +64,64 @@ def greedy_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndar
         ids_low.append(set_high[swap_index, 0])
         swap_index += 1
 
-    # Revert last swap
-    if swap_index > 0:
+    # Revert last swap if at least one swap was made and the cost of the high cost set is now less than the low cost set
+    if swap_index > 0 and cost_high < cost_low:
         swap_index -= 1
         cost_high += set_high[swap_index, 1]
         cost_low -= set_high[swap_index, 1]
         ids_high.pop()
         ids_low.pop()
 
-    # Compute the difference between each remaining pair of columns
-    differences = np.zeros((set_high.shape[0] - swap_index, set_low.shape[0] - swap_index))
-    min_diff = np.inf
-    min_pair = None
-    for i in range(swap_index, set_high.shape[0]):
-        for j in range(swap_index, set_low.shape[0]):
-            differences[i - swap_index, j - swap_index] = abs((cost_high - cost_low) - (set_high[i, 1] - set_low[j, 1]))
-            if differences[i - swap_index, j - swap_index] < min_diff:
-                min_diff = differences[i - swap_index, j - swap_index]
-                min_pair = (i, j)
-    
-    # Fill in the remaining indicies
-    for i in range(swap_index, set_high.shape[0]):
-        if i != min_pair[0]:
-            ids_high.append(set_high[i, 0])
-        else:
-            ids_high.append(set_low[min_pair[1], 0])
-    for j in range(swap_index, set_low.shape[0]):
-        if j != min_pair[1]:
-            ids_low.append(set_low[j, 0])
-        else:
-            ids_low.append(set_high[min_pair[0], 0])
+    # Compute the difference between each remaining pair of columns and make one last swap only if the threshold is 0.
+    if threshold == 0:
+        differences = np.zeros(
+            (set_high.shape[0] - swap_index, set_low.shape[0] - swap_index))
+        min_diff = np.inf
+        min_pair = (None, None)
+        for i in range(swap_index, set_high.shape[0]):
+            for j in range(swap_index, set_low.shape[0]):
+                differences[i - swap_index, j - swap_index] = abs(
+                    (cost_high - cost_low) - (set_high[i, 1] - set_low[j, 1]))
+                if differences[i - swap_index, j - swap_index] < min_diff:
+                    min_diff = differences[i - swap_index, j - swap_index]
+                    min_pair = (i, j)
 
-    # Return the indicies of the columns to swap
-    if costA > costB:
-        return np.array(ids_high, dtype=int), np.array(ids_low, dtype=int)
+        # Update the costs
+        cost_high -= set_high[min_pair[0], 1]
+        cost_high += set_low[min_pair[1], 1]
+        cost_low += set_high[min_pair[0], 1]
+        cost_low -= set_low[min_pair[1], 1]
+
+        # Fill in the remaining indicies
+        for i in range(swap_index, set_high.shape[0]):
+            if i != min_pair[0]:
+                ids_high.append(set_high[i, 0])
+            else:
+                ids_high.append(set_low[min_pair[1], 0])
+        for j in range(swap_index, set_low.shape[0]):
+            if j != min_pair[1]:
+                ids_low.append(set_low[j, 0])
+            else:
+                ids_low.append(set_high[min_pair[0], 0])
     else:
-        return np.array(ids_low, dtype=int), np.array(ids_high, dtype=int)
+        # Fill in the remaining indicies
+        for i in range(swap_index, set_high.shape[0]):
+            ids_high.append(set_high[i, 0])
+        for j in range(swap_index, set_low.shape[0]):
+            ids_low.append(set_low[j, 0])
+
+    # Return the indicies of the columns to swap, and the maximum cost after the swap
+    max_cost = max(cost_high, cost_low)
+    if costA > costB:
+        return np.array(ids_high, dtype=int), np.array(ids_low, dtype=int), max_cost
+    else:
+        return np.array(ids_low, dtype=int), np.array(ids_high, dtype=int), max_cost
 
 
 # Helper method to swap columns between two processors with dynamic programming
-def dp_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def dp_swap(
+    setA: np.ndarray, setB: np.ndarray, _: int = 0
+) -> Tuple[np.ndarray, np.ndarray, int]:
     """
     Constructs an DP table that minimizes the absolute difference between the sums of the columns in setA and setB after swapping.
     """
@@ -110,10 +132,10 @@ def dp_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]
     if not isinstance(setB, np.ndarray):
         setB = np.array(setB, dtype=int)
         print("Warning: setB was not a numpy array")
-    
+
     N = setA.shape[0]
     # Vectorized difference computation
-    differences = setA[:,1] - setB[:,1]
+    differences = setA[:, 1] - setB[:, 1]
     total_diff = int(np.sum(np.abs(differences)))
     offset = total_diff  # offset for DP array index
 
@@ -124,7 +146,7 @@ def dp_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]
     dp_prev = np.full((N+1, 2*total_diff+1), magic_number, dtype=int)
     dp_choice = np.zeros((N+1, 2*total_diff+1), dtype=int)
     # Mark starting state (sum=0 mapped to index offset)
-    dp_prev[0, offset] = offset  
+    dp_prev[0, offset] = offset
 
     # DP loop: state index ranges 0 to 2*total_diff (with offset representing 0)
     for i in range(1, N+1):
@@ -172,15 +194,20 @@ def dp_swap(setA: np.ndarray, setB: np.ndarray) -> Tuple[np.ndarray, np.ndarray]
     # Reverse to restore order
     ids_setA = np.array(ids_setA[::-1], dtype=int)
     ids_setB = np.array(ids_setB[::-1], dtype=int)
-    return ids_setA, ids_setB
+    # Threshold not implemented for DP swap, return 0 for max cost
+    return ids_setA, ids_setB, 0
+
 
 # Greedy one-to-one dynamic reassignment solution through greedy heuristic
+
+
 def greed_heuristic(
-        workload: Workload,
-        original_assignment: Assignment,
-        interval: int = 0,
-        swap_alg = dp_swap,
-        result_path: str = None
+    workload: Workload,
+    original_assignment: Assignment,
+    interval: int = 0,
+    swap_alg=greedy_swap,
+    result_path: Optional[str] = None,
+    enable_threshold: bool = False,
 ) -> Assignment:
     # Check if an assignment is already at the result path
     if result_path is not None:
@@ -191,30 +218,43 @@ def greed_heuristic(
         except FileNotFoundError:
             pass
         except Exception as e:
-            print(f'Error {e} occurred while reading the assignment at {result_path} for interval {interval}')
-    
+            print(
+                f'Error {e} occurred while reading the assignment at {result_path} for interval {interval}')
+
     print(f'Starting interval {interval}')
     # Use numpy to avoid per-column loops
     assignment_ranks = original_assignment.assignment['KppRank'].to_numpy()
     workload_interval = workload.workload.iloc[:, interval].to_numpy()
-    processor_costs = np.bincount(assignment_ranks, weights=workload_interval, minlength=original_assignment.processors)
+    processor_costs = np.bincount(
+        assignment_ranks, weights=workload_interval, minlength=original_assignment.processors)
     processor_columns = {proc: np.column_stack((np.nonzero(assignment_ranks == proc)[0],
                                                 workload_interval[assignment_ranks == proc]))
                          for proc in range(original_assignment.processors)}
-    
+
     sorted_processors = np.argsort(processor_costs)
-    
+
     # prepare processor pairs based on sorted costs
     half = len(sorted_processors) // 2
-    tasks = np.array([(processor_columns[sorted_processors[i]], processor_columns[sorted_processors[-i - 1]]) 
+    tasks = np.array([(processor_columns[sorted_processors[i]], processor_columns[sorted_processors[-i - 1]])
                       for i in range(half)], dtype=object)
-    pairs_index = np.array([(sorted_processors[i], sorted_processors[-i - 1]) 
+    pairs_index = np.array([(sorted_processors[i], sorted_processors[-i - 1])
                             for i in range(half)], dtype=int)
-    
+
     assignments = np.full(workload.samples, -1, dtype=int)
-    
-    results = [swap_alg(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
-    
+
+    results = []
+    if enable_threshold:
+        last_max = 0
+        # Preallocate results for efficiency
+        results = [None] * len(tasks)
+        for idx, (pairs_A, pairs_B) in enumerate(tasks):
+            set_A, set_B, max_cost = swap_alg(pairs_A, pairs_B, last_max)
+            results[idx] = (set_A, set_B)
+            last_max = max_cost
+    else:
+        swap_results = [swap_alg(pairs_A, pairs_B, 0) for pairs_A, pairs_B in tasks]
+        results = [(set_A, set_B) for set_A, set_B, _ in swap_results]
+
     # update assignments based on results using indices
     for i in range(len(results)):
         proc_a, proc_b = pairs_index[i]
@@ -223,24 +263,29 @@ def greed_heuristic(
             assignments[col] = proc_a
         for col in set_B:
             assignments[col] = proc_b
-    
+
     # compute updated costs using numpy grouping
-    updated_costs = np.bincount(assignments, weights=workload_interval, minlength=original_assignment.processors)
+    updated_costs = np.bincount(
+        assignments, weights=workload_interval, minlength=original_assignment.processors)
     peak = updated_costs.max()
     trough = updated_costs.min()
     print(f"Interval {interval} diff: {peak} - {trough} = {peak - trough}")
-    
+
     if result_path is not None:
-        Assignment(pd.DataFrame(assignments, columns=['KppRank'])).write_csv(result_path)
+        Assignment(pd.DataFrame(assignments, columns=[
+                   'KppRank'])).write_csv(result_path)
     return Assignment(pd.DataFrame(assignments, columns=['KppRank']))
 
 # Greedy heuristic but limit the swap to between local processors
+
+
 def greed_heuristic_local(
-        workload: Workload,
-        original_assignment: Assignment,
-        interval: int = 0,
-        swap_alg = dp_swap,
-        result_path: str = None
+    workload: Workload,
+    original_assignment: Assignment,
+    interval: int = 0,
+    swap_alg=dp_swap,
+    result_path: Optional[str] = None,
+    enable_threshold: bool = False,
 ) -> Assignment:
     # Check if an assignment is already at the result path
     if result_path is not None:
@@ -251,7 +296,8 @@ def greed_heuristic_local(
         except FileNotFoundError:
             pass
         except Exception as e:
-            print(f'Error {e} occurred while reading the assignment at {result_path} for interval {interval}')
+            print(
+                f'Error {e} occurred while reading the assignment at {result_path} for interval {interval}')
 
     print(f'Starting interval {interval}')
     # Use numpy to avoid per-column loops
@@ -260,22 +306,35 @@ def greed_heuristic_local(
 
     assignments = np.full(workload.samples, -1, dtype=int)
 
+    group_id = 0
     for group in original_assignment.processor_groups:
-        processor_costs = np.bincount(assignment_ranks, weights=workload_interval, minlength=original_assignment.processors)
+        processor_costs = np.bincount(
+            assignment_ranks, weights=workload_interval, minlength=original_assignment.processors)
         processor_columns = {proc: np.column_stack((np.nonzero(assignment_ranks == proc)[0],
                                                     workload_interval[assignment_ranks == proc]))
                              for proc in group}
 
-        sorted_processors = sorted(group, key=lambda proc: processor_costs[proc])
+        sorted_processors = sorted(
+            group, key=lambda proc: processor_costs[proc])
 
         # prepare processor pairs based on sorted costs
         half = len(sorted_processors) // 2
-        tasks = np.array([(processor_columns[sorted_processors[i]], processor_columns[sorted_processors[-i - 1]]) 
+        tasks = np.array([(processor_columns[sorted_processors[i]], processor_columns[sorted_processors[-i - 1]])
                           for i in range(half)], dtype=object)
-        pairs_index = np.array([(sorted_processors[i], sorted_processors[-i - 1]) 
+        pairs_index = np.array([(sorted_processors[i], sorted_processors[-i - 1])
                                 for i in range(half)], dtype=int)
 
-        results = [swap_alg(pairs_A, pairs_B) for pairs_A, pairs_B in tasks]
+        if enable_threshold:
+            last_max = 0
+            # Preallocate results for efficiency
+            results = [None] * len(tasks)
+            for idx, (pairs_A, pairs_B) in enumerate(tasks):
+                set_A, set_B, max_cost = swap_alg(pairs_A, pairs_B, last_max)
+                results[idx] = (set_A, set_B)
+                last_max = max_cost
+        else:
+            swap_results = [swap_alg(pairs_A, pairs_B, 0) for pairs_A, pairs_B in tasks]
+            results = [(set_A, set_B) for set_A, set_B, _ in swap_results]
 
         # update assignments based on results using indices
         for i in range(len(results)):
@@ -287,64 +346,18 @@ def greed_heuristic_local(
                 assignments[col] = proc_b
 
     # compute updated costs using numpy grouping
-    updated_costs = np.bincount(assignments, weights=workload_interval, minlength=original_assignment.processors)
+    updated_costs = np.bincount(
+        assignments, weights=workload_interval, minlength=original_assignment.processors)
     peak = updated_costs.max()
     trough = updated_costs.min()
     print(f"Interval {interval} diff: {peak} - {trough} = {peak - trough}")
 
     if result_path is not None:
-        Assignment(pd.DataFrame(assignments, columns=['KppRank'])).write_csv(result_path)
+        Assignment(pd.DataFrame(assignments, columns=[
+                   'KppRank'])).write_csv(result_path)
     return Assignment(pd.DataFrame(assignments, columns=['KppRank']))
+
 
 # If ran as main, test the heuristic
 if __name__ == "__main__":
-    # Configuration
-    res = 24
-    hosts = 4
-    ptile = 6
-    swap_alg_name = "greedy"
-
-    workload_base = "test/workloads/"
-    original_assignment_base = "test/og_assignments/"
-
-    procs = hosts * ptile
-
-    if swap_alg_name == "greedy":
-        swap_alg = greedy_swap
-    elif swap_alg_name == "dp":
-        swap_alg = dp_swap
-    else:
-        print("Invalid swap algorithm")
-        exit(1)
-
-    # Test the heuristic at res and procs
-    # workload = Workload.read_csv(f"{workload_base}/c{res}.csv")
-    workload = Workload.read_csv(f"{workload_base}/padded_14_2_1_c24.csv")
-    original_assignment = Assignment.read_csv(f"{original_assignment_base}/c{res}_p{procs}.csv")
-    original_assignment.set_processor_groups(hosts, ptile)
-
-    base = f"test/{swap_alg_name}_padded/c{res}_p{procs}"
-    os.makedirs(base, exist_ok=True)
-    os.makedirs(f"{base}/intervals", exist_ok=True)
-    assignments = []
-
-    # # Start timer
-    # start_time = time.time()
-
-    # Total time: 81.52 seconds for single threaded.
-    # Run the heuristic for each interval, single threaded without saving
-    for interval in range(workload.intervals):
-        assignments.append(
-            greed_heuristic(workload, original_assignment, interval, swap_alg, f'{base}/intervals/interval_{interval}.csv')
-        )
-
-    # # End timer
-    # end_time = time.time()
-    # # Print elapsed time
-    # elapsed_time = end_time - start_time
-    # print(f"Total time: {elapsed_time:.2f} seconds")
-
-    # Concatenate the assignments
-    print("Concatenating assignments")
-    assignment = Assignment.concatenate(assignments)
-    assignment.write_csv(f'{base}/assignment.csv')
+    print("This script is now a library. Use run_greedy_interval.py and combine_assignments.py for batch processing.")

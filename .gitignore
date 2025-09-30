@@ -1,5 +1,7 @@
 __pycache__
 test/
+temp/
 SCIPOptSuite-*
 .DS_Store
-temp.py
+torch/
+models/

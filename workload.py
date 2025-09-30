@@ -1,5 +1,4 @@
 import os
-import netCDF4 as nc
 import numpy as np
 import pandas as pd
 
@@ -9,15 +8,26 @@ class Workload:
     def __init__(self, workload: pd.DataFrame = None):
         # Create a dataframe from the costs
         self.workload = workload
+        # Workload attributes
+        self.intervals = 0
+        self.samples = 0
+        self.resolution = 0
         # If the workload is not None
         if self.workload is not None:
             # The number of samples is the number of rows in the workload matrix
             # The number of intervals is the number of columns in the workload matrix
             self.samples, self.intervals = self.workload.shape
+            # The resolution is the square root of the number of samples divided by 6
+            self.resolution = np.sqrt(self.samples / 6)
+            # Make sure the resolution is an integer, else throw a warning
+            if self.resolution != int(self.resolution):
+                raise ValueError(f"Error: resolution {self.resolution} is not an integer")
+            self.resolution = int(self.resolution)
 
     # Reads raw workload from raw nc4 format to a numpy array
     @staticmethod
-    def read_nc4(file_name: os.path) -> np.ndarray:
+    def read_nc4(file_name: str) -> np.ndarray:
+        import netCDF4 as nc  # Import netCDF4 only when needed
         # Open the netcdf file
         with nc.Dataset(file_name, 'r') as f:
             # Read only the KppTotSteps variable
@@ -29,17 +39,17 @@ class Workload:
         # Return the costs
         costs = var[0].sum(axis=0).flatten()
         return costs
-    
+
     # Reads raw workload from a nc4 file
     @staticmethod
-    def read_nc4_file(file_name: os.path) -> 'Workload':
+    def read_nc4_file(file_name: str) -> "Workload":
         # Read the workload from the file
         workload = Workload.read_nc4(file_name)
         return Workload(pd.DataFrame(workload))
-    
+
     # Reads raw workload from a directory of nc4 files
     @staticmethod
-    def read_nc4_dir(dir_name: os.path) -> 'Workload':
+    def read_nc4_dir(dir_name: str) -> "Workload":
         # Dictionary to store the workloads by timestamp
         workloads = {}
         for filename in os.listdir(dir_name):
@@ -61,14 +71,14 @@ class Workload:
 
     # Reads workload from processed csv format
     @staticmethod
-    def read_csv(file_name: os.path) -> 'Workload':
+    def read_csv(file_name: str) -> 'Workload':
         # Read the workload from the file
         workload = pd.read_csv(file_name, index_col=0)
         # Create a Workload object from the dataframe
         return Workload(workload)
-    
+
     # Writes the workload to a csv file
-    def write_csv(self, file_name: os.path):
+    def write_csv(self, file_name: str):
         self.workload.to_csv(file_name)
 
     # Computes the lower bound of the workload for a given number of processors for the given intervals if given
@@ -86,18 +96,56 @@ class Workload:
             L_bound += np.ceil(max(L_avg, w_max))
         return int(L_bound)
 
+    # Upscales the workload to a different resolution
+    def upscale(self, target_resolution: int, order: int = 0) -> 'Workload':
+        from skimage.transform import resize
+        # Reshape the workload matrix to 6 * res * res by intervals
+        reshaped_workload = self.workload.values.reshape(6, self.resolution, self.resolution, self.intervals)
+
+        # Use skimage's resize for bin interpretation
+        upscaled_workload = resize(
+            reshaped_workload,
+            (6, target_resolution, target_resolution, self.intervals),
+            order=order,
+            mode='edge',  # Use edge mode to extend the edges
+            preserve_range=True,  # Prevents normalization
+            anti_aliasing=False,  # For area/binned interpretation
+        )
+
+        # Reshape back to 6 * target_res * target_res by intervals
+        upscaled_workload = upscaled_workload.reshape(6 * target_resolution * target_resolution, self.intervals)
+        # Create a new Workload object from the upscaled workload, preserving column headers
+        return Workload(pd.DataFrame(upscaled_workload, columns=self.workload.columns))
 
 # If ran as main, test the workload class
 if __name__ == "__main__":
-    # Test reading from nc4 files
-    input_dir = (
-        "/Users/jordansun/Documents/Research/GCHP_Optimization/sftp/c90_kpp_raw"
-    )
-    workload = Workload.read_nc4_dir(input_dir)
-    print(workload.workload)
-    # Write the workload to a csv file
-    workload.write_csv('test/workloads/c90.csv')
-    # Test computing lower bound
-    print(workload.lower_bound(36))
-    print(workload.lower_bound(144))
-    print(workload.lower_bound(576))
+    # Read the workload
+    workload = Workload.read_csv("test/workloads/c180.csv")
+    # Upscale the workload to a different resolution
+    target_resolution = 360
+    upscale_dict = {
+        # 0: "nearest",
+        1: "bilinear",
+        # 3: "bicubic",
+    }
+    import concurrent.futures
+
+    def process_upscale(args):
+        order, method = args
+        upscaled_workload = workload.upscale(target_resolution, order=order)
+        upscaled_workload.write_csv(
+            f"test/workloads/{method}_c180_to_c{target_resolution}.csv"
+        )
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        executor.map(process_upscale, upscale_dict.items())
+
+    # Test computing lower bound if it exists
+    if os.path.exists(f"test/workloads/c{target_resolution}.csv"):
+        # Read the actual workload from the file
+        workload = Workload.read_csv(f"test/workloads/c{target_resolution}.csv")
+
+        # Test computing lower bound
+        print(workload.lower_bound(36))
+        print(workload.lower_bound(144))
+        print(workload.lower_bound(576))
