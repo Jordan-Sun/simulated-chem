@@ -22,6 +22,18 @@ The original assignment file stores how GEOS-Chem originally assigns columns. Yo
 You can write it out as an assignment file using the `write_csv` function in `Assignment`, and reuse assignment file for reassignments for the same resolution and number of processors. The original assignment for 6 and 24 processors at `c24` resolution, as well as 36, 144, and 576 processors at `c48` resolution, are included in the repo as an example.
 
 # Usage
+## Compiling the modified GCHP that takes an assignment file
+```Bash
+git clone https://github.com/geoschem/GCHP.git GCHP
+cd GCHP
+git submodule set-url geos-chem https://github.com/Jordan-Sun/geos-chem.git
+git submodule sync
+git submodule update --init --remote
+cd src/GCHP_GridComp/GEOSChem_GridComp/geos-chem
+git switch experiment/dynamic_balance
+```
+Then compile following the [compilation instructions](https://gchp.readthedocs.io/en/stable/user-guide/compiling.html).
+
 ## Generating a load balanced assignment
 Once you have the neceesary files, you can use any of the algorithms to generate a load balanced assignment.
 Here, we will use the greedy heuristic as an example to generate the assignment.
@@ -29,14 +41,14 @@ Here, we will use the greedy heuristic as an example to generate the assignment.
 First, set the configurations (`res, hosts, ptile`) in `greedy.py` to match your configuration, keep the `swap_alg_name` to be `greedy`.
 Then set the `workload_base` and `original_assignment_base` as the path to the directory holding your workload file and original assignment file, respectively.
 After that, run the script with:
-```
+```Bash
 python greedy.py
 ```
 
 ## Converting an assignment file to mapping files readable by GCHP
 After the previous step, you should have obtained an assignment file. Before we can use it as an reassignment file for GCHP, we need to convert it into mapping files.
 To do so, you need to set the configurations (`res, procs`) in `assignment.py` to match your configuration. You also have to set the `workload_base`, `original_assignment_base`, and `assignment_base/strategy` as the path to the directory holding your workload file, original assignment file, and load balanced assignment file, respectively. After that, run the  script with:
-```
+```Bash
 python assignment.py
 ```
 
