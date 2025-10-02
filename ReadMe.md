@@ -1,5 +1,5 @@
 # Simulated-Chem
-Simulated-Chem is a GEOS-Chem load balancer and simulator.
+Simulated-Chem is a GEOS-Chem load balancer.
 The main goal of Simulated-Chem is to genereate a load balanced assignment as mapping files for our **modified** chemistry module of GEOS-Chem.
 Therefore, one has to compile a **modified** version of GCHP by following **"GCHP Setup"** before using the load balanced assignment.
 
@@ -20,7 +20,6 @@ git switch experiment/dynamic_balance
 2. Compile the code following the [GCHP compilation instructions](https://gchp.readthedocs.io/en/14.5.2/user-guide/compiling.html).
 
 ## Creating Run directory
-
 Before one can run GCHP, one needs a Run directory. See [create a Run directory instructions](https://gchp.readthedocs.io/en/14.5.2/user-guide/rundir-init.html).
 
 # Preparation
@@ -84,7 +83,6 @@ python assignment.py
 ```
 
 ## Running the modified GCHP with mapping files
-
 This subsection assumes you can already run GCHP without the mapping files. Refer to *"Running the modified GCHP to generate KPP diagnostics"* if GCHP won't run even without mapping files.
 When the mapping files are not provided, our modified GCHP will run without any load balancing and behave exactly like the original GCHP.
 
