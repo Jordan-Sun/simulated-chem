@@ -3,7 +3,6 @@ Simulated-Chem is a GEOS-Chem load balancer and simulator.
 The main goal of Simulated-Chem is to genereate a load balanced assignment as mapping files for our **modified** chemistry module of GEOS-Chem.
 Therefore, one has to compile a **modified** version of GCHP by following **"GCHP Setup"** before using the load balanced assignment.
 
-
 # GCHP Setup
 ## Compiling the modified GCHP
 We modified `v14.5.2` of GCHP such that it can take a load balanced assignment as mapping files that one would generate by this to balance the workload, see **"Usage"** for details.

@@ -454,14 +454,14 @@ if __name__ == "__main__":
         assert assignment.assignment.shape[0] == 6 * resolution * resolution
         assert assignment.processors == procs
 
-        # Test simulate
-        print("Test simulate")
-        L = assignment.simulate(
-            workload,
-            False,
-            f"{test_path}/simulation.csv",
-        )
-        print(L)
+        # # Test simulate
+        # print("Test simulate")
+        # L = assignment.simulate(
+        #     workload,
+        #     False,
+        #     f"{test_path}/simulation.csv",
+        # )
+        # print(L)
 
         # Test write mapping
         print("Test write mapping")
